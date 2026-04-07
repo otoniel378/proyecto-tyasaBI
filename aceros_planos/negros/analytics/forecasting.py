@@ -63,6 +63,8 @@ def _build_hist_fc(serie, fc_values, lower, upper) -> pd.DataFrame:
 def _forecast_ets(serie: pd.DataFrame, horizonte: int) -> ForecastResult:
     from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
+    serie = serie[serie["ds"] >= ETS_FECHA_INICIO].reset_index(drop=True)
+
     y = serie["y"].values
     n = len(y)
     n_test  = min(6, n // 5)
@@ -110,7 +112,8 @@ def _forecast_ets(serie: pd.DataFrame, horizonte: int) -> ForecastResult:
                               metricas={}, backtest=pd.DataFrame(), error_msg=str(e))
 
 
-SARIMA_FECHA_INICIO = "2022-01-01"
+ETS_FECHA_INICIO    = "2023-01-01"
+SARIMA_FECHA_INICIO = "2023-01-01"
 
 
 def _forecast_sarima(serie: pd.DataFrame, horizonte: int) -> ForecastResult:
@@ -306,9 +309,9 @@ def _forecast_naive(serie: pd.DataFrame, horizonte: int) -> ForecastResult:
 
 
 MODELOS_DISPONIBLES = {
-    "sarima": "SARIMA (recomendado)",
+    "ets":    "Holt-Winters ETS (recomendado)",
     "auto":   "Automatico (mejor MAPE en backtesting)",
-    "ets":    "Holt-Winters ETS",
+    "sarima": "SARIMA",
     "xgb":    "XGBoost (ML)",
     "naive":  "Naive Estacional",
 }

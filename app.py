@@ -51,16 +51,16 @@ apn_forecast = st.Page("pages/ap_negros/04_forecasting.py",       title="Forecas
 apn_mix      = st.Page("pages/ap_negros/05_mix_productos.py",     title="Mix de Productos",      icon="🎯")
 
 # ── Aceros Planos — Galvanizados (EN DESARROLLO) ─────────────────────────
-apg_soon = st.Page("pages/ap_galvanizados/coming_soon.py", title="Aceros Galvanizados", icon="✨")
+apg_soon = st.Page("pages/ap_galvanizados/coming_soon.py", title="Aceros Galvanizados", icon="✨", url_path="ap_galvanizados")
 
 # ── Aceros Planos — Formados (EN DESARROLLO) ─────────────────────────────
-apf_soon = st.Page("pages/ap_formados/coming_soon.py", title="Aceros Formados", icon="🔧")
+apf_soon = st.Page("pages/ap_formados/coming_soon.py", title="Aceros Formados", icon="🔧", url_path="ap_formados")
 
 # ── Aceros Largos (PROXIMO) ──────────────────────────────────────────────
-al_soon = st.Page("pages/aceros_largos/coming_soon.py", title="Aceros Largos", icon="📏")
+al_soon = st.Page("pages/aceros_largos/coming_soon.py", title="Aceros Largos", icon="📏", url_path="aceros_largos")
 
 # ── Aceros SBQ (PROXIMO) ─────────────────────────────────────────────────
-sbq_soon = st.Page("pages/aceros_sbq/coming_soon.py", title="Aceros SBQ", icon="🔑")
+sbq_soon = st.Page("pages/aceros_sbq/coming_soon.py", title="Aceros SBQ", icon="🔑", url_path="aceros_sbq")
 
 # ---------------------------------------------------------------------------
 # Navegacion estructurada por area
