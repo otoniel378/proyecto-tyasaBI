@@ -1,0 +1,295 @@
+"""
+noticias.py — Búsqueda de noticias financieras en tiempo real.
+
+Fuentes (en orden de prioridad):
+  1. Google News RSS   — gratis, sin límite, sin API key, tiempo real
+  2. NewsAPI           — como respaldo (100 req/día plan gratuito)
+API Key NewsAPI: 6207d70b95eb40ea89b8081860b73aa3
+"""
+
+import xml.etree.ElementTree as ET
+import urllib.parse
+import pandas as pd
+import requests
+from datetime import datetime, timedelta
+import hashlib
+
+NEWSAPI_KEY = "6207d70b95eb40ea89b8081860b73aa3"
+NEWSAPI_URL = "https://newsapi.org/v2/everything"
+
+# ── Queries optimizadas por variable ─────────────────────────────────────────
+# Lista: [query_corta_google, keyword_newsapi_1, keyword_newsapi_2, ...]
+QUERIES = {
+    "Brent_USD":         ["Brent crude oil price",      "Brent oil", "crude oil OPEC", "petróleo Brent precio"],
+    "WTI_USD":           ["WTI crude oil price",        "West Texas oil", "crude oil Trump Iran", "petróleo precio"],
+    "Gas_HenryHub_USD":  ["Henry Hub natural gas",      "natural gas price USA", "gas natural EE.UU."],
+    "Gas_TTF_Europa":    ["TTF natural gas Europe",     "gas natural Europa precio", "European gas energy"],
+    "Mineral_Hierro":    ["iron ore price",             "mineral hierro precio", "Vale iron ore", "Rio Tinto iron"],
+    "Cobre_USD":         ["copper price LME",           "precio cobre Chile", "copper market"],
+    "Aluminio_USD":      ["aluminum price LME",         "aluminium price", "aluminio precio LME"],
+    "ETF_Acero_Global":  ["steel price global",         "precio acero global", "HRC steel hot rolled"],
+    "Ternium_MX":        ["Ternium steel Mexico",       "Ternium acero", "acero México mercado"],
+    "ArcelorMittal":     ["ArcelorMittal steel",        "ArcelorMittal results", "acería global"],
+    "Nucor_EAF":         ["Nucor steel scrap",          "Nucor Corporation", "steel scrap price EAF"],
+    "SteelDynamics_EAF": ["Steel Dynamics EAF",        "Steel Dynamics Inc", "electric arc furnace steel"],
+    "ZIM_Contenedor":    ["container shipping rates",   "ZIM shipping", "flete contenedor Asia precio"],
+    "ETF_Flete_Seco":    ["Baltic Dry Index shipping",  "BDI Baltic Dry", "dry bulk freight rates"],
+    "BDI_Baltic_Dry":    ["Baltic Dry Index BDI",       "shipping freight rates", "bulk carrier rates"],
+    "Matson_Pacifico":   ["Pacific shipping freight",   "Matson shipping", "transpacific freight"],
+    "StarBulk":          ["Star Bulk shipping",         "dry bulk carrier market", "bulk shipping rates"],
+    "VIX":               ["VIX volatility index",       "market volatility fear", "S&P 500 volatility"],
+    "SP500":             ["S&P 500 market",             "stock market Wall Street", "bolsa valores EE.UU."],
+    "Oro_USD":           ["gold price rally",           "gold market safe haven", "precio oro onza"],
+    "Dolar_Index":       ["US dollar index DXY",        "dólar índice fortaleza", "dollar strength Fed"],
+    "Bonos_20y":         ["US Treasury bonds yield",   "bonos tesoro EE.UU.", "interest rates Fed"],
+    "Nikkei_Japon":      ["Nikkei Japan stock market", "bolsa Tokio Japón", "Japan economy yen"],
+    "KOSPI_Corea":       ["KOSPI Korea stock market",  "bolsa Corea", "Korea economy POSCO"],
+    "ETF_China":         ["China stock market economy","economía China Shanghai", "China trade tariffs"],
+    "ETF_Alemania":      ["Germany economy DAX",       "Alemania economía acero", "ThyssenKrupp DAX"],
+    "ETF_Mexico":        ["Mexico economy stocks",     "México economía BMV", "nearshoring México inversión"],
+    "USD_MXN":           ["peso mexicano tipo cambio", "USD MXN dólar peso", "Banxico tipo cambio"],
+    "ETF_Japon":         ["Japan economy manufacturing","Japón manufactura exportación", "yen dollar"],
+    "ETF_Corea":         ["Korea economy Samsung",     "Corea economía manufactura", "Korea exports"],
+    "ETF_Emergentes":    ["emerging markets economy",  "mercados emergentes", "EM stocks global"],
+}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# FUENTE 1 — Google News RSS (principal, gratis, sin límites)
+# ════════════════════════════════════════════════════════════════════════════
+
+def _buscar_google_news(query: str, max_resultados: int = 10) -> list[dict]:
+    """
+    Busca en Google News RSS. Sin API key, sin límites diarios.
+    Soporta español e inglés automáticamente según la query.
+    """
+    resultados = []
+    # Buscar en inglés y español
+    for hl, gl, ceid in [("en", "US", "US:en"), ("es", "MX", "MX:es")]:
+        url = (
+            "https://news.google.com/rss/search?"
+            + urllib.parse.urlencode({
+                "q":    query,
+                "hl":   hl,
+                "gl":   gl,
+                "ceid": ceid,
+            })
+        )
+        try:
+            resp = requests.get(url, timeout=8, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; TyasaBI/1.0)"
+            })
+            if resp.status_code != 200:
+                continue
+            root = ET.fromstring(resp.content)
+            channel = root.find("channel")
+            if channel is None:
+                continue
+            for item in channel.findall("item")[:max_resultados]:
+                titulo = item.findtext("title", "").strip()
+                link   = item.findtext("link",  "").strip()
+                desc   = item.findtext("description", "").strip()
+                # Limpiar HTML del description si viene de Google
+                if "<" in desc:
+                    import re
+                    desc = re.sub(r"<[^>]+>", "", desc).strip()
+                pub_raw = item.findtext("pubDate", "")
+                # Parsear fecha: "Wed, 09 Apr 2026 10:00:00 GMT"
+                try:
+                    from email.utils import parsedate_to_datetime
+                    fecha_pub = parsedate_to_datetime(pub_raw).strftime("%Y-%m-%d")
+                except Exception:
+                    fecha_pub = pub_raw[:10] if pub_raw else ""
+                # Fuente: viene en <source> o en el título "- Fuente"
+                fuente_el = item.find("source")
+                fuente = fuente_el.text if fuente_el is not None else ""
+                if not fuente and " - " in titulo:
+                    fuente = titulo.rsplit(" - ", 1)[-1]
+                    titulo = titulo.rsplit(" - ", 1)[0].strip()
+
+                if titulo and link:
+                    resultados.append({
+                        "titulo":      titulo,
+                        "descripcion": desc,
+                        "fuente":      fuente,
+                        "url":         link,
+                        "fecha_pub":   fecha_pub,
+                        "fuente_api":  "Google News",
+                    })
+        except Exception as e:
+            print(f"Google News RSS error ({hl}): {e}")
+
+    return resultados
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# FUENTE 2 — NewsAPI (respaldo)
+# ════════════════════════════════════════════════════════════════════════════
+
+def _buscar_newsapi(query: str, desde: str, hasta: str, max_resultados: int = 5) -> list[dict]:
+    """Busca en NewsAPI solo en inglés (más resultados en plan free)."""
+    params = {
+        "q":        query,
+        "from":     desde,
+        "to":       hasta,
+        "sortBy":   "publishedAt",
+        "language": "en",
+        "pageSize": max_resultados,
+        "apiKey":   NEWSAPI_KEY,
+    }
+    try:
+        resp = requests.get(NEWSAPI_URL, params=params, timeout=8)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        if data.get("status") != "ok":
+            return []
+        resultados = []
+        for art in data.get("articles", []):
+            resultados.append({
+                "titulo":      art.get("title", ""),
+                "descripcion": art.get("description", ""),
+                "fuente":      art.get("source", {}).get("name", ""),
+                "url":         art.get("url", ""),
+                "fecha_pub":   (art.get("publishedAt") or "")[:10],
+                "fuente_api":  "NewsAPI",
+            })
+        return resultados
+    except Exception as e:
+        print(f"NewsAPI error: {e}")
+        return []
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# API PÚBLICA
+# ════════════════════════════════════════════════════════════════════════════
+
+def buscar_noticias_actuales(
+    variable: str,
+    dias: int = 7,
+    max_resultados: int = 10,
+) -> list[dict]:
+    """
+    Busca noticias de los últimos N días para una variable de mercado.
+    Prioridad: Google News RSS → NewsAPI como respaldo.
+    Sin límites de requests. Retorna hasta max_resultados artículos deduplicados.
+    """
+    queries = QUERIES.get(variable, [variable.replace("_", " ")])
+
+    # Google News: busca con la primera query (más corta y específica)
+    resultados = _buscar_google_news(queries[0], max_resultados=max_resultados)
+
+    # Si Google News no dio suficientes, complementar con NewsAPI
+    if len(resultados) < 3:
+        hasta  = datetime.utcnow().strftime("%Y-%m-%d")
+        desde  = (datetime.utcnow() - timedelta(days=dias)).strftime("%Y-%m-%d")
+        newsapi_res = _buscar_newsapi(queries[0], desde, hasta, max_resultados=max_resultados)
+        resultados.extend(newsapi_res)
+
+    # Deduplicar por URL
+    seen, final = set(), []
+    for item in resultados:
+        url = item.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            final.append(item)
+
+    return final[:max_resultados]
+
+
+def buscar_noticias_multifuente(
+    variable: str,
+    ventana_dias: int = 14,
+    max_resultados: int = 15,
+) -> list[dict]:
+    """
+    Búsqueda ampliada con múltiples queries para la misma variable.
+    Retorna hasta max_resultados noticias deduplicadas, ordenadas por fecha.
+    """
+    queries = QUERIES.get(variable, [variable.replace("_", " ")])
+    todos = []
+
+    for q in queries[:3]:  # hasta 3 queries por variable
+        res = _buscar_google_news(q, max_resultados=6)
+        todos.extend(res)
+
+    # Respaldo NewsAPI con la primera query
+    if len(todos) < 5:
+        hasta = datetime.utcnow().strftime("%Y-%m-%d")
+        desde = (datetime.utcnow() - timedelta(days=ventana_dias)).strftime("%Y-%m-%d")
+        todos.extend(_buscar_newsapi(queries[0], desde, hasta, max_resultados=8))
+
+    # Deduplicar y ordenar por fecha desc
+    seen, final = set(), []
+    for item in todos:
+        url = item.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            final.append(item)
+
+    # Ordenar por fecha descendente
+    def _fecha_sort(x):
+        try:
+            return x.get("fecha_pub", "") or ""
+        except Exception:
+            return ""
+
+    final.sort(key=_fecha_sort, reverse=True)
+    return final[:max_resultados]
+
+
+def get_google_news_url(variable: str) -> str:
+    """Retorna URL de Google News para abrir en el browser con la query de la variable."""
+    queries = QUERIES.get(variable, [variable.replace("_", " ")])
+    q = urllib.parse.quote_plus(queries[0])
+    return f"https://news.google.com/search?q={q}&hl=es&gl=MX&ceid=MX:es"
+
+
+# ── Funciones de compatibilidad hacia atrás ───────────────────────────────────
+
+def buscar_noticias(variable: str, fecha_desde: str, fecha_hasta: str,
+                    max_resultados: int = 5) -> list[dict]:
+    """Compatibilidad: redirige a Google News + NewsAPI."""
+    resultados = _buscar_google_news(
+        QUERIES.get(variable, [variable.replace("_", " ")])[0],
+        max_resultados=max_resultados
+    )
+    if len(resultados) < 3:
+        resultados.extend(_buscar_newsapi(
+            QUERIES.get(variable, [variable.replace("_", " ")])[0],
+            fecha_desde, fecha_hasta, max_resultados
+        ))
+    seen, final = set(), []
+    for item in resultados:
+        if item["url"] not in seen:
+            seen.add(item["url"])
+            final.append(item)
+    return final[:max_resultados]
+
+
+def buscar_noticias_quiebre(variable: str, fecha_corte: str,
+                             dias_ventana: int = 14) -> list[dict]:
+    """Compatibilidad: usa Google News para noticias sobre el evento."""
+    return buscar_noticias_actuales(variable, dias=dias_ventana)
+
+
+def noticias_a_dataframe(noticias: list[dict], quiebre_id: str,
+                          variable: str) -> pd.DataFrame:
+    if not noticias:
+        return pd.DataFrame()
+    ahora = datetime.utcnow().isoformat()
+    rows = []
+    for n in noticias:
+        id_hash = hashlib.md5(f"{quiebre_id}_{n['url']}".encode()).hexdigest()[:16]
+        rows.append({
+            "id":          id_hash,
+            "quiebre_id":  quiebre_id,
+            "variable":    variable,
+            "titulo":      (n.get("titulo", "") or "")[:500],
+            "descripcion": (n.get("descripcion", "") or "")[:1000],
+            "fuente":      (n.get("fuente", "") or "")[:200],
+            "url":         (n.get("url", "") or "")[:500],
+            "fecha_pub":   n.get("fecha_pub", None),
+            "fecha_carga": ahora,
+        })
+    return pd.DataFrame(rows)

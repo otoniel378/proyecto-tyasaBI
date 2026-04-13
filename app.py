@@ -62,6 +62,10 @@ al_soon = st.Page("pages/aceros_largos/coming_soon.py", title="Aceros Largos", i
 # ── Aceros SBQ (PROXIMO) ─────────────────────────────────────────────────
 sbq_soon = st.Page("pages/aceros_sbq/coming_soon.py", title="Aceros SBQ", icon="🔑", url_path="aceros_sbq")
 
+# ── Mercado Global (NUEVO) ────────────────────────────────────────────────
+mkt_monitor = st.Page("pages/mercado/01_monitor.py",   title="Monitor de Quiebres", icon="📡")
+mkt_vars    = st.Page("pages/mercado/02_variables.py", title="Variables Globales",  icon="🌐")
+
 # ---------------------------------------------------------------------------
 # Navegacion estructurada por area
 # ---------------------------------------------------------------------------
@@ -72,5 +76,6 @@ pg = st.navigation({
     "Aceros Planos — Formados": [apf_soon],
     "Aceros Largos": [al_soon],
     "Aceros SBQ": [sbq_soon],
+    "Mercado Global": [mkt_monitor, mkt_vars],
 })
 pg.run()
