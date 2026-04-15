@@ -42,3 +42,9 @@ GOLD/
 *.json
 service_account*.json
 credentials*.json
+
+# Streamlit secrets (contiene API keys)
+.streamlit/secrets.toml
+
+# Caché de análisis de IA
+cache/ai_summaries/

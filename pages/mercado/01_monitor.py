@@ -28,8 +28,79 @@ from mercado_noticias.analytics.noticias import (
     buscar_noticias_multifuente,
     get_google_news_url,
 )
+from mercado_noticias.analytics.ai_analysis import analizar_alerta
 from core.components.filters import sidebar_header
 from core.components.kpi_cards import render_kpi_row, seccion_titulo
+
+# ── Gemini API key (desde secrets.toml) ───────────────────────────────────────
+try:
+    _GEMINI_KEY = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    _GEMINI_KEY = ""
+
+# ── Renderizador de resultado IA (sin interacción, solo display) ──────────────
+def _render_ai_result(result: dict, color_txt: str):
+    """
+    Muestra el resultado de un análisis IA ya generado.
+    Esta función NO tiene widgets interactivos — solo st.markdown.
+    Se llama fuera de cualquier loop/expander para evitar el NotFoundError.
+    """
+    DRIVER_ICONS = {"Oferta":"🏭","Demanda":"📊","Geopolitica":"🌍","Macro":"🏦","Sectorial":"⚙️"}
+    SENT_ICONS   = {"Alcista":"📈","Bajista":"📉","Neutral":"➡️"}
+    CONF_COLORS  = {"Alta":"#2E7D32","Media":"#D68910","Baja":"#C62828"}
+
+    error = result.get("_error")
+    if error:
+        st.markdown(
+            f"<div style='color:#C62828;font-size:12px;margin-bottom:6px;'>⚠️ {error}</div>",
+            unsafe_allow_html=True,
+        )
+
+    driver      = result.get("driver_principal", "—")
+    sent        = result.get("sentimiento", "—")
+    confianza   = result.get("confianza", "—")
+    cached_flag = result.get("_cached", False)
+    d_icon  = DRIVER_ICONS.get(driver, "🔍")
+    s_icon  = SENT_ICONS.get(sent, "➡️")
+    c_color = CONF_COLORS.get(confianza, "#6B7280")
+    cache_badge = (
+        '<span style="background:#F3F4F6;color:#6B7280;padding:4px 10px;'
+        'border-radius:20px;font-size:11px;margin-left:4px;">💾 Caché</span>'
+        if cached_flag else ""
+    )
+    st.markdown(
+        f"<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;'>"
+        f"<span style='background:#EEF2FF;color:#3730A3;padding:4px 10px;"
+        f"border-radius:20px;font-size:12px;font-weight:600;'>{d_icon} Driver: {driver}</span>"
+        f"<span style='background:#F0FDF4;color:#166534;padding:4px 10px;"
+        f"border-radius:20px;font-size:12px;font-weight:600;'>{s_icon} Sentimiento: {sent}</span>"
+        f"<span style='background:#FFF7ED;color:{c_color};padding:4px 10px;"
+        f"border-radius:20px;font-size:12px;font-weight:600;'>✓ Confianza: {confianza}</span>"
+        f"{cache_badge}</div>",
+        unsafe_allow_html=True,
+    )
+    puntos = result.get("puntos_clave", [])
+    if puntos:
+        items = "".join(
+            f"<div style='border-left:3px solid {color_txt};padding:5px 12px;"
+            f"margin-bottom:6px;font-size:13px;background:#FAFAFA;"
+            f"border-radius:0 5px 5px 0;'><b>{i}.</b> {p}</div>"
+            for i, p in enumerate(puntos[:5], 1)
+        )
+        st.markdown(
+            f"<b style='font-size:13px;'>Puntos clave:</b>{items}",
+            unsafe_allow_html=True,
+        )
+    impacto = result.get("impacto_tyasa", "")
+    if impacto and impacto != "—":
+        st.markdown(
+            f"<div style='background:#EFF6FF;border:1px solid #BFDBFE;"
+            f"border-radius:6px;padding:10px 14px;margin-top:8px;"
+            f"font-size:13px;color:#1E40AF;'>"
+            f"🏭 <b>Impacto en TYASA:</b> {impacto}</div>",
+            unsafe_allow_html=True,
+        )
+
 
 # ── Helper: panel de noticias reutilizable ────────────────────────────────────
 def _render_panel_noticias(variable: str, color_txt: str, color_bg: str):
@@ -274,6 +345,91 @@ else:
         f"No hay alertas activas con el umbral de {umbral_sigma}σ. "
         "Reduce la sensibilidad en el sidebar para ver más variables."
     )
+
+# ══════════════════════════════════════════════════════════════════════════
+# SECCIÓN IA — Análisis Inteligente de Drivers del Mercado
+# Colocada FUERA de cualquier loop/expander para evitar el NotFoundError
+# de React que ocurre cuando hay widgets interactivos dentro de un expander
+# que está dentro de un for-loop.
+# ══════════════════════════════════════════════════════════════════════════
+vars_ca = [
+    a for a in alertas_live
+    if a["severidad"] in ("Crítico", "Alto")
+    and (cat_sel == "Todas" or a["categoria"] == cat_sel)
+]
+
+if vars_ca:
+    seccion_titulo(
+        "🤖 Análisis de IA: Drivers del Mercado",
+        "Selecciona una variable en estado Crítico o Alto para generar un resumen ejecutivo con Gemini"
+    )
+
+    SEV_COLORS_IA = {
+        "Crítico": ("#C0392B", "#FCEBEB"),
+        "Alto":    ("#D68910", "#FAEEDA"),
+    }
+
+    # Selectbox para elegir variable — widget estable, no en loop ni en expander
+    opciones = [
+        f"{a['variable'].replace('_',' ')} — {a['severidad']} ({a['sigma_actual']:+.2f}σ)"
+        for a in vars_ca
+    ]
+    idx_sel = st.selectbox(
+        "Variable a analizar",
+        range(len(opciones)),
+        format_func=lambda i: opciones[i],
+        key="ai_var_idx",
+    )
+    alerta_ia  = vars_ca[idx_sel]
+    var_ia     = alerta_ia["variable"]
+    sigma_ia   = alerta_ia["sigma_actual"]
+    sev_ia     = alerta_ia["severidad"]
+    color_txt_ia, color_bg_ia = SEV_COLORS_IA.get(sev_ia, ("#6B7280", "#F3F4F6"))
+    skey_ia    = f"ai_{var_ia}_{round(sigma_ia, 1)}"
+
+    # Formulario de generación — un solo submit, sin nested en expander
+    with st.form(key="ai_main_form"):
+        col_chk, col_btn = st.columns([3, 1])
+        with col_chk:
+            force_regen_ia = st.checkbox("Forzar regeneración (ignorar caché)", value=False)
+        with col_btn:
+            submitted_ia = st.form_submit_button("▶ Generar análisis")
+    st.caption("Análisis generado por Gemini · Caché válido 24 h por variable.")
+
+    if not _GEMINI_KEY:
+        st.warning(
+            "**API key de Gemini no configurada.**  \n"
+            "Abre `.streamlit/secrets.toml` y añade: `GEMINI_API_KEY = \"AIza...\"`"
+        )
+    elif submitted_ia:
+        noticias_ia = buscar_noticias_multifuente(var_ia, ventana_dias=14, max_resultados=10)
+        res_ia = analizar_alerta(
+            variable=var_ia, sigma=sigma_ia,
+            cambio7=alerta_ia["cambio_7d_pct"],
+            valor=alerta_ia["valor_actual"],
+            media_base=alerta_ia["media_base"],
+            tendencia=alerta_ia["tendencia"],
+            noticias=noticias_ia, api_key=_GEMINI_KEY,
+            scrape_articles=False, force_refresh=bool(force_regen_ia),
+        )
+        st.session_state[skey_ia] = res_ia
+
+    # Recuperar resultado (session_state → caché en disco)
+    result_ia = st.session_state.get(skey_ia)
+    if result_ia is None:
+        from mercado_noticias.analytics.ai_analysis import _cache_key, _cache_load
+        disk_ia = _cache_load(_cache_key(var_ia, sigma_ia))
+        if disk_ia:
+            disk_ia["_cached"] = True
+            st.session_state[skey_ia] = disk_ia
+            result_ia = disk_ia
+
+    if result_ia:
+        _render_ai_result(result_ia, color_txt_ia)
+    elif _GEMINI_KEY:
+        st.info("Haz clic en **▶ Generar análisis** para obtener el resumen ejecutivo.")
+
+    st.divider()
 
 # ══════════════════════════════════════════════════════════════════════════
 # SECCIÓN B — QUIEBRES HISTÓRICOS (eventos pasados documentados)
