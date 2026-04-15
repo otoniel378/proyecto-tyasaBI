@@ -42,9 +42,11 @@ GOLD/
 *.json
 service_account*.json
 credentials*.json
+!*.example.json
 
-# Streamlit secrets (contiene API keys)
+# Streamlit secrets (contiene API keys) — el .example sí se sube
 .streamlit/secrets.toml
+!.streamlit/secrets.toml.example
 
 # Caché de análisis de IA
 cache/ai_summaries/
