@@ -334,3 +334,111 @@ def analizar_alerta(
         "_cached":          False,
         "_error":           "Gemini no respondió o la respuesta no pudo ser parseada.",
     }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# CHAT / TEXTO LIBRE
+# ════════════════════════════════════════════════════════════════════════════
+
+_SYSTEM_CHAT = (
+    "Eres un analista senior de commodities y mercados de acero con 20 años de "
+    "experiencia. Trabajas para TYASA, acería mexicana con horno eléctrico de arco. "
+    "Responde de forma concisa, técnica y en español. Máximo 3 párrafos cortos."
+)
+
+
+def _call_gemini_text(
+    prompt: str,
+    api_key: str,
+    system: str = _SYSTEM_CHAT,
+    model: str = "gemini-2.5-flash",
+) -> str:
+    """Llama a Gemini y retorna texto libre (para chat y síntesis abierta)."""
+    try:
+        from google import genai                       # type: ignore
+        from google.genai import types as genai_types  # type: ignore
+        client = genai.Client(api_key=api_key)
+        resp = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system,
+                temperature=0.5,
+                max_output_tokens=600,
+                thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        return (resp.text or "").strip() or "Sin respuesta."
+    except Exception as e:
+        print(f"[ai_analysis] _call_gemini_text error: {e}")
+        return f"Error al consultar la IA: {str(e)[:120]}"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SÍNTESIS INDUSTRIAL (Monitor Siderúrgico)
+# ════════════════════════════════════════════════════════════════════════════
+
+_SINTESIS_TMPL = """Eres analista senior de la industria siderúrgica para TYASA México (acería EAF).
+
+Con base en las siguientes noticias recientes de la industria, genera una síntesis ejecutiva
+en JSON con EXACTAMENTE este formato (sin markdown extra):
+
+{{
+  "impacto_precios": "2-3 oraciones sobre movimientos de precios HRC/CRC/insumos/fletes",
+  "tendencias_mexico": "2-3 oraciones sobre el mercado mexicano: inversiones, nearshoring, demanda",
+  "riesgos_globales": "2-3 oraciones sobre riesgos: sobrecapacidad China, aranceles, demanda global",
+  "nivel_alerta": "Alto | Medio | Bajo",
+  "recomendacion": "una oración de acción concreta para el equipo comercial de TYASA"
+}}
+
+## Noticias recientes ({n} artículos):
+{noticias_txt}
+"""
+
+
+def sintesis_industrial(
+    noticias_por_grupo: dict[str, list[dict]],
+    api_key: str,
+    model: str = "gemini-2.5-flash",
+    force_refresh: bool = False,
+) -> dict | None:
+    """
+    Síntesis de industria siderúrgica. Caché diario en disco.
+    Retorna dict: impacto_precios, tendencias_mexico, riesgos_globales,
+                  nivel_alerta, recomendacion, _cached, _error
+    """
+    hoy  = date.today().isoformat()
+    ckey = hashlib.md5(f"industria|{hoy}".encode()).hexdigest()[:16]
+
+    cached = _cache_load(ckey)
+    if cached and not force_refresh:
+        cached["_cached"] = True
+        return cached
+
+    todos: list[str] = []
+    for grupo, noticias in noticias_por_grupo.items():
+        for n in noticias[:4]:
+            titulo = (n.get("titulo", "") or "").strip()
+            desc   = (n.get("descripcion", "") or "").strip()[:100]
+            fecha  = (n.get("fecha_pub", "") or "")
+            todos.append(f"[{grupo}·{fecha}] {titulo}. {desc}")
+
+    noticias_txt = "\n".join(todos[:20]) if todos else "(sin noticias disponibles)"
+    prompt = _SINTESIS_TMPL.format(n=len(todos), noticias_txt=noticias_txt)
+
+    resultado = _call_gemini(prompt, api_key, model=model)
+    if resultado:
+        resultado["_cached"] = False
+        resultado["_error"]  = None
+        _cache_save(ckey, resultado)
+        return resultado
+
+    return {
+        "impacto_precios":   "No se pudo generar la síntesis.",
+        "tendencias_mexico": "",
+        "riesgos_globales":  "",
+        "nivel_alerta":      "—",
+        "recomendacion":     "",
+        "_cached": False,
+        "_error":  "Gemini no respondió o la respuesta no pudo ser parseada.",
+    }

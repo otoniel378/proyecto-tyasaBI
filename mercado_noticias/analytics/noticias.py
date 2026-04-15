@@ -293,3 +293,75 @@ def noticias_a_dataframe(noticias: list[dict], quiebre_id: str,
             "fecha_carga": ahora,
         })
     return pd.DataFrame(rows)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# QUERIES PARA MONITOR DE INDUSTRIA SIDERÚRGICA
+# ════════════════════════════════════════════════════════════════════════════
+
+GRUPOS_INDUSTRIA: dict[str, list[str]] = {
+    "Urgente": [
+        "precios HRC acero laminado caliente mercado",
+        "aranceles acero T-MEC reglas origen México",
+        "CANACERO noticias acero industria México",
+        "China sobrecapacidad acero exportaciones dumping",
+        "Sección 232 acero importaciones EE.UU. aranceles",
+    ],
+    "Tendencias": [
+        "Ternium México inversión expansión producción acero",
+        "acero verde descarbonización emisiones CO2 siderurgia",
+        "nearshoring automotriz acero estampado México",
+        "demanda construcción varilla alambrón acero México",
+        "galvanizado electrodomésticos línea blanca recubrimientos",
+    ],
+    "Empresas": [
+        "Ternium ArcelorMittal México planta acero producción",
+        "AHMSA Altos Hornos México situación producción",
+        "Deacero Gerdau Corsa acero México noticias",
+        "Nucor Cleveland-Cliffs US Steel acero EE.UU.",
+        "POSCO Nippon Steel Baosteel acero global mercado",
+        "worldsteel alacero reporte acero industria",
+    ],
+    "Insumos": [
+        "chatarra ferrosa precio EAF horno arco eléctrico",
+        "mineral hierro iron ore precio tonelada",
+        "carbón coquizable coking coal precio siderurgia",
+        "zinc LME precio galvanizado recubrimiento acero",
+        "DRI HBI hierro reducción directa precio",
+    ],
+    "Tecnología": [
+        "green steel hidrógeno verde siderurgia descarbonización",
+        "EAF horno arco eléctrico eficiencia acero tendencias",
+        "IA digitalización acero metalurgia gemelos digitales",
+        "DRI reducción directa acero carbono cero",
+        "colada continua laminación tecnología optimización",
+    ],
+}
+
+_GRUPO_COLORS: dict[str, tuple[str, str]] = {
+    "Urgente":    ("#DC2626", "#FEE2E2"),
+    "Tendencias": ("#059669", "#D1FAE5"),
+    "Empresas":   ("#2563EB", "#DBEAFE"),
+    "Insumos":    ("#D97706", "#FEF3C7"),
+    "Tecnología": ("#7C3AED", "#EDE9FE"),
+}
+
+
+def buscar_noticias_industria(grupo: str = "Urgente", max_resultados: int = 12) -> list[dict]:
+    """Noticias especializadas de la industria siderúrgica por grupo temático."""
+    queries = GRUPOS_INDUSTRIA.get(grupo, GRUPOS_INDUSTRIA["Urgente"])
+    todos: list[dict] = []
+    for q in queries[:3]:
+        res = _buscar_google_news(q, max_resultados=5)
+        for r in res:
+            r["grupo"] = grupo
+        todos.extend(res)
+    seen: set[str] = set()
+    final: list[dict] = []
+    for item in todos:
+        url = item.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            final.append(item)
+    final.sort(key=lambda x: x.get("fecha_pub", "") or "", reverse=True)
+    return final[:max_resultados]

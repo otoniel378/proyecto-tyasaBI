@@ -1,8 +1,7 @@
 """
 01_monitor.py — Monitor de Quiebres de Mercado — TYASA BI
-Detecta movimientos anómalos en variables globales y vincula noticias.
+Alertas en tiempo real · Análisis IA · Chat · Explorar variable
 """
-
 import os, sys
 _root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if _root not in sys.path:
@@ -12,288 +11,279 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
-from config import COLORS, COLOR_SEQUENCE
+from config import COLORS
 
-from mercado_noticias.loaders import (
-    load_variables_mercado,
-    load_quiebres_activos,
-    load_noticias,
-    get_categorias_disponibles,
-)
-from mercado_noticias.analytics.detector import detectar_quiebres, resumen_quiebres
+from mercado_noticias.loaders import load_variables_mercado, get_categorias_disponibles
+from mercado_noticias.analytics.detector import detectar_quiebres_automatico
 from mercado_noticias.analytics.noticias import (
-    buscar_noticias_quiebre,
-    buscar_noticias_actuales,
-    buscar_noticias_multifuente,
-    get_google_news_url,
+    buscar_noticias_multifuente, get_google_news_url, QUERIES
 )
-from mercado_noticias.analytics.ai_analysis import analizar_alerta
+from mercado_noticias.analytics.ai_analysis import (
+    analizar_alerta, _call_gemini_text,
+    _cache_key, _cache_load,
+)
 from core.components.filters import sidebar_header
 from core.components.kpi_cards import render_kpi_row, seccion_titulo
 
-# ── Gemini API key (desde secrets.toml) ───────────────────────────────────────
+# ── API key ───────────────────────────────────────────────────────────────────
 try:
     _GEMINI_KEY = st.secrets["GEMINI_API_KEY"]
 except Exception:
     _GEMINI_KEY = ""
 
-# ── Renderizador de resultado IA (sin interacción, solo display) ──────────────
-def _render_ai_result(result: dict, color_txt: str):
-    """
-    Muestra el resultado de un análisis IA ya generado.
-    Esta función NO tiene widgets interactivos — solo st.markdown.
-    Se llama fuera de cualquier loop/expander para evitar el NotFoundError.
-    """
-    DRIVER_ICONS = {"Oferta":"🏭","Demanda":"📊","Geopolitica":"🌍","Macro":"🏦","Sectorial":"⚙️"}
-    SENT_ICONS   = {"Alcista":"📈","Bajista":"📉","Neutral":"➡️"}
-    CONF_COLORS  = {"Alta":"#2E7D32","Media":"#D68910","Baja":"#C62828"}
+# ── Paleta de severidad ───────────────────────────────────────────────────────
+SEV_COLORS = {
+    "Crítico":  ("#C0392B", "#FCEBEB"),
+    "Alto":     ("#D68910", "#FAEEDA"),
+    "Moderado": ("#185FA5", "#E6F1FB"),
+}
+SEV_ORDEN = {"Crítico": 4, "Alto": 3, "Moderado": 2, "Normal": 1}
 
-    error = result.get("_error")
-    if error:
-        st.markdown(
-            f"<div style='color:#C62828;font-size:12px;margin-bottom:6px;'>⚠️ {error}</div>",
-            unsafe_allow_html=True,
-        )
 
-    driver      = result.get("driver_principal", "—")
-    sent        = result.get("sentimiento", "—")
-    confianza   = result.get("confianza", "—")
-    cached_flag = result.get("_cached", False)
-    d_icon  = DRIVER_ICONS.get(driver, "🔍")
-    s_icon  = SENT_ICONS.get(sent, "➡️")
-    c_color = CONF_COLORS.get(confianza, "#6B7280")
-    cache_badge = (
-        '<span style="background:#F3F4F6;color:#6B7280;padding:4px 10px;'
-        'border-radius:20px;font-size:11px;margin-left:4px;">💾 Caché</span>'
-        if cached_flag else ""
+# ════════════════════════════════════════════════════════════════════════════
+# HELPERS (solo HTML puro — cero componentes Streamlit condicionales)
+# ════════════════════════════════════════════════════════════════════════════
+
+def _ai_html(result: dict | None, color_txt: str) -> str:
+    """Convierte resultado de IA a HTML. Retorna '' si no hay resultado."""
+    if not result:
+        return ""
+    D_ICO = {"Oferta":"🏭","Demanda":"📊","Geopolitica":"🌍","Macro":"🏦","Sectorial":"⚙️"}
+    S_ICO = {"Alcista":"📈","Bajista":"📉","Neutral":"➡️"}
+    C_COL = {"Alta":"#2E7D32","Media":"#D68910","Baja":"#C62828"}
+    d  = result.get("driver_principal","—")
+    s  = result.get("sentimiento","—")
+    c  = result.get("confianza","—")
+    ca = result.get("_cached", False)
+    di = D_ICO.get(d,"🔍"); si = S_ICO.get(s,"➡️"); cc = C_COL.get(c,"#6B7280")
+    cb = '<span style="background:#F3F4F6;color:#888;padding:2px 7px;border-radius:8px;font-size:10px;margin-left:4px;">💾</span>' if ca else ""
+    err = result.get("_error","")
+    eh  = f"<div style='color:#C62828;font-size:11px;margin-bottom:4px;'>⚠️ {err}</div>" if err else ""
+    badges = (
+        f"<div style='display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;'>"
+        f"<span style='background:#EEF2FF;color:#3730A3;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;'>{di} {d}</span>"
+        f"<span style='background:#F0FDF4;color:#166534;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;'>{si} {s}</span>"
+        f"<span style='background:#FFF7ED;color:{cc};padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;'>✓ {c}</span>"
+        f"{cb}</div>"
     )
-    st.markdown(
-        f"<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;'>"
-        f"<span style='background:#EEF2FF;color:#3730A3;padding:4px 10px;"
-        f"border-radius:20px;font-size:12px;font-weight:600;'>{d_icon} Driver: {driver}</span>"
-        f"<span style='background:#F0FDF4;color:#166534;padding:4px 10px;"
-        f"border-radius:20px;font-size:12px;font-weight:600;'>{s_icon} Sentimiento: {sent}</span>"
-        f"<span style='background:#FFF7ED;color:{c_color};padding:4px 10px;"
-        f"border-radius:20px;font-size:12px;font-weight:600;'>✓ Confianza: {confianza}</span>"
-        f"{cache_badge}</div>",
-        unsafe_allow_html=True,
+    puntos = result.get("puntos_clave",[])
+    items  = "".join(
+        f"<div style='border-left:3px solid {color_txt};padding:4px 10px;margin-bottom:4px;"
+        f"font-size:12px;background:#FAFAFA;border-radius:0 4px 4px 0;'><b>{i}.</b> {p}</div>"
+        for i, p in enumerate(puntos[:5], 1)
+    ) if puntos else ""
+    pkh = f"<b style='font-size:12px;'>Puntos clave:</b>{items}" if items else ""
+    imp = result.get("impacto_tyasa","")
+    imph = (
+        f"<div style='background:#EFF6FF;border:1px solid #BFDBFE;border-radius:5px;"
+        f"padding:8px 12px;margin-top:6px;font-size:12px;color:#1E40AF;'>"
+        f"🏭 <b>Impacto TYASA:</b> {imp}</div>"
+    ) if imp and imp != "—" else ""
+    return (
+        f"<div style='margin:8px 0;padding:10px;background:#F9FAFB;"
+        f"border-radius:6px;border:1px solid #E5E7EB;'>{eh}{badges}{pkh}{imph}</div>"
     )
-    puntos = result.get("puntos_clave", [])
-    if puntos:
-        items = "".join(
-            f"<div style='border-left:3px solid {color_txt};padding:5px 12px;"
-            f"margin-bottom:6px;font-size:13px;background:#FAFAFA;"
-            f"border-radius:0 5px 5px 0;'><b>{i}.</b> {p}</div>"
-            for i, p in enumerate(puntos[:5], 1)
-        )
-        st.markdown(
-            f"<b style='font-size:13px;'>Puntos clave:</b>{items}",
-            unsafe_allow_html=True,
-        )
-    impacto = result.get("impacto_tyasa", "")
-    if impacto and impacto != "—":
-        st.markdown(
-            f"<div style='background:#EFF6FF;border:1px solid #BFDBFE;"
-            f"border-radius:6px;padding:10px 14px;margin-top:8px;"
-            f"font-size:13px;color:#1E40AF;'>"
-            f"🏭 <b>Impacto en TYASA:</b> {impacto}</div>",
-            unsafe_allow_html=True,
-        )
 
 
-# ── Helper: panel de noticias reutilizable ────────────────────────────────────
-def _render_panel_noticias(variable: str, color_txt: str, color_bg: str):
+def _news_card_html(n: dict, c_txt: str, c_bg: str) -> str:
+    titulo = (n.get("titulo","") or "")
+    desc   = (n.get("descripcion","") or "")[:200]
+    fuente = (n.get("fuente","") or "")
+    url    = (n.get("url","") or "")
+    fecha  = (n.get("fecha_pub","") or "")
+    badge  = n.get("fuente_api","")
+    bc     = "#1B3A5C" if badge == "Google News" else "#6B7280"
+    link   = (f'<a href="{url}" target="_blank" style="color:{c_txt};font-weight:600;'
+              f'font-size:11px;text-decoration:none;">Ver →</a>') if url else ""
+    return (
+        f"<div style='border-left:3px solid {c_txt};background:{c_bg};"
+        f"padding:8px 12px;border-radius:0 5px 5px 0;margin-bottom:6px;'>"
+        f"<div style='font-size:12px;font-weight:600;color:{c_txt};line-height:1.4;'>{titulo}</div>"
+        f"<div style='font-size:11px;color:#444;margin-top:3px;line-height:1.4;'>{desc}</div>"
+        f"<div style='font-size:10px;color:#888;margin-top:4px;display:flex;gap:8px;"
+        f"flex-wrap:wrap;align-items:center;'>"
+        f"📅 {fecha} · 📰 {fuente} "
+        f"<span style='background:{bc};color:white;padding:1px 5px;border-radius:3px;"
+        f"font-size:9px;'>{badge}</span> {link}</div></div>"
+    )
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# COMPONENTES REUTILIZABLES (componentes Streamlit estables)
+# ════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _noticias_var_cached(variable: str, max_r: int = 10) -> list[dict]:
+    """Caché 15 min por variable. Evita llamadas HTTP repetidas en cada rerender."""
+    return buscar_noticias_multifuente(variable, ventana_dias=7, max_resultados=max_r)
+
+
+def _render_ai_inline(var: str, sigma_a: float, cambio7: float,
+                       val_act: float, mu_base: float, tend: str,
+                       color_txt: str):
     """
-    Panel de noticias con:
-    - Pestañas de ventana temporal (7d / 14d / 30d)
-    - Hasta 10 noticias por ventana
-    - Botón directo a Google News
-    - Fuente de la noticia visible
+    AI inline dentro del expander.
+    Exactamente 1 st.button + 1 st.markdown — árbol DOM estable.
+    Sin st.spinner, sin condicionales de árbol.
     """
-    st.markdown("**📰 Noticias relacionadas a este mercado:**")
+    if not _GEMINI_KEY:
+        return
+    skey = f"ai_{var}_{round(sigma_a, 1)}"
+    if st.button("🤖 Análisis IA", key=f"aibtn_{var}"):
+        nots = _noticias_var_cached(variable=var)
+        st.session_state[skey] = analizar_alerta(
+            variable=var, sigma=sigma_a, cambio7=cambio7,
+            valor=val_act, media_base=mu_base, tendencia=tend,
+            noticias=nots, api_key=_GEMINI_KEY,
+            scrape_articles=False, force_refresh=False,
+        )
+    result = st.session_state.get(skey)
+    if result is None:
+        disk = _cache_load(_cache_key(var, sigma_a))
+        if disk:
+            disk["_cached"] = True
+            st.session_state[skey] = disk
+            result = disk
+    st.markdown(_ai_html(result, color_txt), unsafe_allow_html=True)
 
-    col_tabs, col_gnews = st.columns([3, 1])
-    with col_gnews:
-        gnews_url = get_google_news_url(variable)
+
+def _render_noticias_tabs(variable: str, color_txt: str, color_bg: str):
+    """Noticias últimos 7 días (sin tabs — una sola llamada HTTP cacheada)."""
+    col_t, col_g = st.columns([3, 1])
+    with col_g:
         st.markdown(
-            f"<a href='{gnews_url}' target='_blank' style='"
-            f"display:inline-block;padding:5px 10px;background:{color_txt};"
-            f"color:white;border-radius:5px;font-size:11px;text-decoration:none;"
-            f"font-weight:600;'>🔍 Más en Google News</a>",
+            f"<a href='{get_google_news_url(variable)}' target='_blank' style='"
+            f"display:inline-block;padding:5px 10px;background:{color_txt};color:white;"
+            f"border-radius:5px;font-size:11px;text-decoration:none;font-weight:600;'>"
+            f"🔍 Google News</a>",
             unsafe_allow_html=True
         )
-
-    tab_7, tab_14, tab_30 = st.tabs(["Últimos 7 días", "Últimos 14 días", "Últimos 30 días"])
-
-    def _render_noticias_lista(noticias: list[dict], c_txt: str, c_bg: str):
-        if not noticias:
-            st.caption("Sin noticias encontradas en este período.")
-            return
-        st.caption(f"{len(noticias)} artículo(s) encontrado(s)")
-        for n in noticias:
-            titulo = n.get("titulo", "") or ""
-            desc   = (n.get("descripcion", "") or "")[:220]
-            fuente = n.get("fuente", "") or ""
-            url    = n.get("url", "") or ""
-            fecha  = n.get("fecha_pub", "") or ""
-            badge  = n.get("fuente_api", "")
-            badge_color = "#1B3A5C" if badge == "Google News" else "#6B7280"
-            st.markdown(
-                f"""<div style='border-left:3px solid {c_txt};background:{c_bg};
-                padding:9px 13px;border-radius:0 6px 6px 0;margin-bottom:7px;'>
-                <div style='font-size:12px;font-weight:600;color:{c_txt};
-                line-height:1.4;'>{titulo}</div>
-                <div style='font-size:11px;color:#444;margin-top:4px;
-                line-height:1.4;'>{desc}{'...' if desc else ''}</div>
-                <div style='font-size:10px;color:#888;margin-top:5px;
-                display:flex;gap:10px;align-items:center;flex-wrap:wrap;'>
-                  <span>📅 {fecha}</span>
-                  <span>📰 {fuente}</span>
-                  <span style='background:{badge_color};color:white;padding:1px 5px;
-                  border-radius:3px;font-size:9px;'>{badge}</span>
-                  {'<a href="' + url + '" target="_blank" style="color:' + c_txt + ';font-weight:600;">Ver artículo →</a>' if url else ''}
-                </div></div>""",
-                unsafe_allow_html=True
-            )
-
-    with tab_7:
-        with st.spinner("Buscando noticias..."):
-            noticias_7 = buscar_noticias_multifuente(variable, ventana_dias=7, max_resultados=10)
-        _render_noticias_lista(noticias_7, color_txt, color_bg)
-
-    with tab_14:
-        with st.spinner("Buscando noticias..."):
-            noticias_14 = buscar_noticias_multifuente(variable, ventana_dias=14, max_resultados=12)
-        _render_noticias_lista(noticias_14, color_txt, color_bg)
-
-    with tab_30:
-        with st.spinner("Buscando noticias..."):
-            noticias_30 = buscar_noticias_multifuente(variable, ventana_dias=30, max_resultados=15)
-        _render_noticias_lista(noticias_30, color_txt, color_bg)
+    nots = _noticias_var_cached(variable)
+    if not nots:
+        st.caption("Sin noticias en los últimos 7 días.")
+        return
+    st.caption(f"{len(nots)} artículo(s) · últimos 7 días")
+    html = "".join(_news_card_html(n, color_txt, color_bg) for n in nots)
+    st.markdown(html, unsafe_allow_html=True)
 
 
-# ── Sidebar ──────────────────────────────────────────────────────────────────
+def _render_chart(df_vars: pd.DataFrame, var: str,
+                  mu_base: float, umbral_sigma: float, color: str = "#1B3A5C"):
+    df_var = df_vars[df_vars["nombre"] == var].sort_values("fecha")
+    if df_var.empty:
+        return
+    std_val = df_var["valor"].std()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df_var["fecha"], y=df_var["valor"],
+        line=dict(color=color, width=1.8),
+        hovertemplate="%{x|%d %b %Y}<br>%{y:,.2f}<extra></extra>",
+        name=var.replace("_", " ")
+    ))
+    fig.add_hrect(
+        y0=mu_base - umbral_sigma * std_val,
+        y1=mu_base + umbral_sigma * std_val,
+        fillcolor="rgba(27,58,92,0.07)", line_width=0,
+        annotation_text=f"Rango normal (±{umbral_sigma}σ)",
+        annotation_position="top left", annotation_font_size=9,
+    )
+    fig.update_layout(
+        paper_bgcolor=COLORS["surface"], plot_bgcolor=COLORS["background"],
+        font=dict(family="Inter, Arial, sans-serif", color=COLORS["text"]),
+        margin=dict(l=40, r=20, t=30, b=40),
+        height=220, showlegend=False,
+        xaxis=dict(showgrid=False), yaxis=dict(gridcolor="#E5E7EB"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SIDEBAR
+# ════════════════════════════════════════════════════════════════════════════
 sidebar_header("Monitor de Mercado", "📡")
-
-categorias = get_categorias_disponibles()
-cat_sel = st.sidebar.selectbox(
-    "Categoría",
-    options=["Todas"] + categorias,
-    key="mkt_cat"
-)
-sev_sel = st.sidebar.selectbox(
-    "Severidad mínima",
-    options=["Todas", "Crítico", "Alto", "Moderado"],
-    key="mkt_sev"
-)
-umbral_sigma = st.sidebar.slider(
-    "Sensibilidad (σ)",
-    min_value=1.0, max_value=5.0, value=2.0, step=0.5,
-    key="mkt_sigma"
-)
+categorias    = get_categorias_disponibles()
+cat_sel       = st.sidebar.selectbox("Categoría", ["Todas"] + categorias, key="mkt_cat")
+sev_sel       = st.sidebar.selectbox("Severidad mínima", ["Todas","Crítico","Alto","Moderado"], key="mkt_sev")
+umbral_sigma  = st.sidebar.slider("Sensibilidad (σ)", 1.0, 5.0, 2.0, 0.5, key="mkt_sigma")
 st.sidebar.divider()
 st.sidebar.caption(
-    "**Detección automática** basada en prueba de Chow + z-score.\n\n"
-    "σ = desviaciones estándar respecto a la media pre-evento.\n\n"
+    "Detección automática z-score respecto a la media pre-evento.\n\n"
     "Datos actualizados diariamente desde BigQuery."
 )
 
-# ── Encabezado ────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# HEADER
+# ════════════════════════════════════════════════════════════════════════════
 st.markdown(
-    f"""
-    <h2 style='color:{COLORS["primary"]};margin-bottom:0;'>📡 Monitor de Quiebres de Mercado</h2>
-    <p style='color:{COLORS["text_light"]};'>
-        Variables siderúrgicas globales · Detección automática · Noticias vinculadas
-    </p>
-    """,
+    f"<h2 style='color:{COLORS['primary']};margin-bottom:0;'>📡 Monitor de Quiebres de Mercado</h2>"
+    f"<p style='color:#6B7280;'>Variables siderúrgicas globales · Detección automática · "
+    f"Noticias vinculadas · Análisis IA</p>",
     unsafe_allow_html=True,
 )
 st.divider()
 
-# ── Carga de datos ─────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# DATA
+# ════════════════════════════════════════════════════════════════════════════
 with st.spinner("Cargando datos de mercado..."):
-    df_vars     = load_variables_mercado(dias=400)
-    df_quiebres = load_quiebres_activos()
+    df_vars = load_variables_mercado(dias=400)
 
-# ── Detección automática en tiempo real ────────────────────────────────────
-from mercado_noticias.analytics.detector import detectar_quiebres_automatico
-
-alertas_live = []
+alertas_live: list[dict] = []
 if not df_vars.empty:
-    alertas_live = detectar_quiebres_automatico(
-        df_vars, umbral_sigma=umbral_sigma
-    )
+    alertas_live = detectar_quiebres_automatico(df_vars, umbral_sigma=umbral_sigma)
 
-# Combinar quiebres históricos de BQ con alertas live
-df_filt = df_quiebres.copy() if not df_quiebres.empty else pd.DataFrame()
-if not df_filt.empty:
-    if cat_sel != "Todas":
-        df_filt = df_filt[df_filt["categoria"] == cat_sel]
-    if sev_sel != "Todas":
-        orden = {"Crítico": 4, "Alto": 3, "Moderado": 2, "Normal": 1}
-        nivel_min = orden.get(sev_sel, 1)
-        df_filt = df_filt[df_filt["severidad"].map(orden).fillna(0) >= nivel_min]
-    if umbral_sigma > 0:
-        df_filt = df_filt[df_filt["sigma"].abs() >= umbral_sigma]
-
-# Filtrar alertas live por categoría
+nivel_min = SEV_ORDEN.get(sev_sel, 1) if sev_sel != "Todas" else 0
 alertas_filt = [
     a for a in alertas_live
-    if cat_sel == "Todas" or a["categoria"] == cat_sel
+    if (cat_sel == "Todas" or a["categoria"] == cat_sel)
+    and SEV_ORDEN.get(a["severidad"], 1) >= nivel_min
 ]
 
 # ── KPIs ───────────────────────────────────────────────────────────────────
-n_total    = len(df_quiebres) if not df_quiebres.empty else 0
-n_criticos = len(df_quiebres[df_quiebres["severidad"] == "Crítico"]) if not df_quiebres.empty else 0
-n_live     = len(alertas_live)
-max_cambio = df_quiebres["cambio_pct"].abs().max() if not df_quiebres.empty else 0
-
+n_crit = sum(1 for a in alertas_live if a["severidad"] == "Crítico")
+n_alto = sum(1 for a in alertas_live if a["severidad"] == "Alto")
+n_mod  = sum(1 for a in alertas_live if a["severidad"] == "Moderado")
 render_kpi_row([
-    {"label": "Quiebres históricos",    "value": n_total,    "icon": "📚"},
-    {"label": "Históricos críticos",    "value": n_criticos, "icon": "🔴"},
-    {"label": "Alertas live (hoy)",     "value": n_live,     "icon": "⚡",
-     "help_text": f"Variables que superan {umbral_sigma}σ en los últimos 5 días hábiles"},
-    {"label": "Mayor cambio histórico", "value": round(max_cambio, 1), "suffix": "%", "icon": "📈"},
+    {"label": "Alertas activas",    "value": len(alertas_live), "icon": "⚡",
+     "help_text": f"Variables superando {umbral_sigma}σ en los últimos 5 días hábiles"},
+    {"label": "Críticas",           "value": n_crit,            "icon": "🔴"},
+    {"label": "Altas",              "value": n_alto,            "icon": "🟠"},
+    {"label": "Moderadas",          "value": n_mod,             "icon": "🟡"},
 ])
 st.divider()
 
-# ══════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════════════
 # SECCIÓN A — ALERTAS EN TIEMPO REAL
-# ══════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════════════
 if alertas_filt:
     seccion_titulo(
-        f"⚡ Alertas detectadas ahora ({len(alertas_filt)})",
-        "Variables que muestran comportamiento anómalo en los últimos 5 días hábiles"
+        f"⚡ Alertas detectadas ({len(alertas_filt)})",
+        "Variables con comportamiento anómalo en los últimos 5 días hábiles"
     )
     for alerta in alertas_filt[:10]:
-        var      = alerta["variable"]
-        sigma_a  = alerta["sigma_actual"]
-        sev      = alerta["severidad"]
-        cambio7  = alerta["cambio_7d_pct"]
-        val_act  = alerta["valor_actual"]
-        mu_base  = alerta["media_base"]
-        tend     = alerta["tendencia"]
-        cat      = alerta["categoria"]
-        fecha_d  = alerta["fecha_deteccion"]
+        var     = alerta["variable"]
+        sigma_a = alerta["sigma_actual"]
+        sev     = alerta["severidad"]
+        cambio7 = alerta["cambio_7d_pct"]
+        val_act = alerta["valor_actual"]
+        mu_base = alerta["media_base"]
+        tend    = alerta["tendencia"]
+        cat     = alerta["categoria"]
+        fecha_d = alerta["fecha_deteccion"]
 
-        SEV_COLORS = {
-            "Crítico":  ("#C0392B", "#FCEBEB"),
-            "Alto":     ("#D68910", "#FAEEDA"),
-            "Moderado": ("#185FA5", "#E6F1FB"),
-        }
         color_txt, color_bg = SEV_COLORS.get(sev, ("#6B7280", "#F3F4F6"))
         flecha = "↑" if tend == "sube" else "↓"
+        sev_badge = f"<span style='background:{color_txt};color:white;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;'>{sev}</span>"
 
         with st.expander(
             f"**{var.replace('_',' ')}** — {flecha} {cambio7:+.1f}% (7d) · {sigma_a:+.2f}σ · {sev}",
             expanded=False
         ):
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Sigma actual",   f"{sigma_a:+.2f}σ")
-            col2.metric("Cambio 7 días",  f"{cambio7:+.1f}%")
-            col3.metric("Valor actual",   f"{val_act:,.2f}")
-            col4.metric("Media base",     f"{mu_base:,.2f}")
+            col1.metric("Sigma actual",  f"{sigma_a:+.2f}σ")
+            col2.metric("Cambio 7 días", f"{cambio7:+.1f}%")
+            col3.metric("Valor actual",  f"{val_act:,.2f}")
+            col4.metric("Media base",    f"{mu_base:,.2f}")
 
             st.markdown(
                 f"<div style='background:{color_bg};border-left:4px solid {color_txt};"
@@ -304,225 +294,170 @@ if alertas_filt:
                 unsafe_allow_html=True
             )
 
-            # Gráfica de la serie reciente
-            df_var = df_vars[df_vars["nombre"] == var].sort_values("fecha")
-            if not df_var.empty:
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=df_var["fecha"], y=df_var["valor"],
-                    line=dict(color=COLORS["primary"], width=1.8),
-                    hovertemplate="%{x|%d %b %Y}<br>%{y:,.2f}<extra></extra>",
-                    name=var.replace("_", " ")
-                ))
-                # Banda de alerta (media ± umbral*std)
-                std_val = df_var["valor"].std()
-                fig.add_hrect(
-                    y0=mu_base - umbral_sigma * std_val,
-                    y1=mu_base + umbral_sigma * std_val,
-                    fillcolor="rgba(27,58,92,0.07)", line_width=0,
-                    annotation_text=f"Rango normal (±{umbral_sigma}σ)",
-                    annotation_position="top left",
-                    annotation_font_size=9,
-                )
-                fig.update_layout(
-                    paper_bgcolor=COLORS["surface"],
-                    plot_bgcolor=COLORS["background"],
-                    font=dict(family="Inter, Arial, sans-serif",
-                              color=COLORS["text"]),
-                    margin=dict(l=40, r=20, t=30, b=40),
-                    height=220, showlegend=False,
-                    xaxis=dict(showgrid=False),
-                    yaxis=dict(gridcolor="#E5E7EB"),
-                )
-                st.plotly_chart(fig, use_container_width=True)
+            # Gráfica
+            _render_chart(df_vars, var, mu_base, umbral_sigma, color_txt)
 
-            # ── Panel de noticias mejorado ─────────────────────────────────
-            _render_panel_noticias(var, color_txt, color_bg)
-
-    st.divider()
-else:
-    st.info(
-        f"No hay alertas activas con el umbral de {umbral_sigma}σ. "
-        "Reduce la sensibilidad en el sidebar para ver más variables."
-    )
-
-# ══════════════════════════════════════════════════════════════════════════
-# SECCIÓN IA — Análisis Inteligente de Drivers del Mercado
-# Colocada FUERA de cualquier loop/expander para evitar el NotFoundError
-# de React que ocurre cuando hay widgets interactivos dentro de un expander
-# que está dentro de un for-loop.
-# ══════════════════════════════════════════════════════════════════════════
-vars_ca = [
-    a for a in alertas_live
-    if a["severidad"] in ("Crítico", "Alto")
-    and (cat_sel == "Todas" or a["categoria"] == cat_sel)
-]
-
-if vars_ca:
-    seccion_titulo(
-        "🤖 Análisis de IA: Drivers del Mercado",
-        "Selecciona una variable en estado Crítico o Alto para generar un resumen ejecutivo con Gemini"
-    )
-
-    SEV_COLORS_IA = {
-        "Crítico": ("#C0392B", "#FCEBEB"),
-        "Alto":    ("#D68910", "#FAEEDA"),
-    }
-
-    # Selectbox para elegir variable — widget estable, no en loop ni en expander
-    opciones = [
-        f"{a['variable'].replace('_',' ')} — {a['severidad']} ({a['sigma_actual']:+.2f}σ)"
-        for a in vars_ca
-    ]
-    idx_sel = st.selectbox(
-        "Variable a analizar",
-        range(len(opciones)),
-        format_func=lambda i: opciones[i],
-        key="ai_var_idx",
-    )
-    alerta_ia  = vars_ca[idx_sel]
-    var_ia     = alerta_ia["variable"]
-    sigma_ia   = alerta_ia["sigma_actual"]
-    sev_ia     = alerta_ia["severidad"]
-    color_txt_ia, color_bg_ia = SEV_COLORS_IA.get(sev_ia, ("#6B7280", "#F3F4F6"))
-    skey_ia    = f"ai_{var_ia}_{round(sigma_ia, 1)}"
-
-    # Formulario de generación — un solo submit, sin nested en expander
-    with st.form(key="ai_main_form"):
-        col_chk, col_btn = st.columns([3, 1])
-        with col_chk:
-            force_regen_ia = st.checkbox("Forzar regeneración (ignorar caché)", value=False)
-        with col_btn:
-            submitted_ia = st.form_submit_button("▶ Generar análisis")
-    st.caption("Análisis generado por Gemini · Caché válido 24 h por variable.")
-
-    if not _GEMINI_KEY:
-        st.warning(
-            "**API key de Gemini no configurada.**  \n"
-            "Abre `.streamlit/secrets.toml` y añade: `GEMINI_API_KEY = \"AIza...\"`"
-        )
-    elif submitted_ia:
-        noticias_ia = buscar_noticias_multifuente(var_ia, ventana_dias=14, max_resultados=10)
-        res_ia = analizar_alerta(
-            variable=var_ia, sigma=sigma_ia,
-            cambio7=alerta_ia["cambio_7d_pct"],
-            valor=alerta_ia["valor_actual"],
-            media_base=alerta_ia["media_base"],
-            tendencia=alerta_ia["tendencia"],
-            noticias=noticias_ia, api_key=_GEMINI_KEY,
-            scrape_articles=False, force_refresh=bool(force_regen_ia),
-        )
-        st.session_state[skey_ia] = res_ia
-
-    # Recuperar resultado (session_state → caché en disco)
-    result_ia = st.session_state.get(skey_ia)
-    if result_ia is None:
-        from mercado_noticias.analytics.ai_analysis import _cache_key, _cache_load
-        disk_ia = _cache_load(_cache_key(var_ia, sigma_ia))
-        if disk_ia:
-            disk_ia["_cached"] = True
-            st.session_state[skey_ia] = disk_ia
-            result_ia = disk_ia
-
-    if result_ia:
-        _render_ai_result(result_ia, color_txt_ia)
-    elif _GEMINI_KEY:
-        st.info("Haz clic en **▶ Generar análisis** para obtener el resumen ejecutivo.")
-
-    st.divider()
-
-# ══════════════════════════════════════════════════════════════════════════
-# SECCIÓN B — QUIEBRES HISTÓRICOS (eventos pasados documentados)
-# ══════════════════════════════════════════════════════════════════════════
-seccion_titulo(
-    "📚 Quiebres históricos documentados",
-    "Eventos pasados con quiebre estadístico confirmado · Haz clic para ver el detalle"
-)
-
-if df_filt.empty:
-    st.info("No hay quiebres históricos con los filtros actuales.")
-else:
-    for _, row in df_filt.iterrows():
-        var    = row.get("variable", "")
-        sev    = row.get("severidad", "Normal")
-        sigma  = row.get("sigma", 0) or 0
-        cambio = row.get("cambio_pct", 0) or 0
-        F_stat = row.get("F_stat", None)
-        p_val  = row.get("p_value", None)
-        m_pre  = row.get("media_pre", None)
-        m_post = row.get("media_post", None)
-        cat    = row.get("categoria", "")
-        q_id   = row.get("id", "")
-        fc     = row.get("fecha_corte", None)
-
-        SEV_C = {
-            "Crítico":     ("#C0392B", "#FCEBEB"),
-            "Alto":        ("#D68910", "#FAEEDA"),
-            "Moderado":    ("#185FA5", "#E6F1FB"),
-            "Normal":      ("#6B7280", "#F3F4F6"),
-            "Sin quiebre": ("#6B7280", "#F3F4F6"),
-        }
-        color_txt, color_bg = SEV_C.get(sev, ("#6B7280", "#F3F4F6"))
-        chg_color = COLORS["danger"] if cambio > 0 else COLORS["success"]
-        chg_str   = f"{cambio:+.1f}%"
-
-        with st.expander(
-            f"**{var.replace('_', ' ')}** — {chg_str} · {sigma:+.2f}σ · {sev} "
-            f"· {'📅 ' + fc.strftime('%d %b %Y') if fc is not None else ''}",
-            expanded=False
-        ):
-            col_a, col_b, col_c, col_d = st.columns(4)
-            col_a.metric("Cambio %",  chg_str)
-            col_b.metric("Sigma (σ)", f"{sigma:+.2f}σ")
-            col_c.metric("F-stat",    f"F={F_stat:.1f}" if F_stat else "—")
-            col_d.metric("p-value",   f"p={p_val:.4f}"  if p_val is not None else "—")
-
-            if m_pre is not None and m_post is not None:
+            # ── AI inline (1 button + 1 markdown — DOM estable) ───────────
+            if sev in ("Crítico", "Alto"):
                 st.markdown(
-                    f"<div style='background:{color_bg};border-left:4px solid {color_txt};"
-                    f"border-radius:6px;padding:8px 14px;margin:6px 0;font-size:13px;'>"
-                    f"<b>Media pre:</b> {m_pre:,.2f} → "
-                    f"<b style='color:{chg_color};'>Post: {m_post:,.2f} {chg_str}</b>"
-                    f"&nbsp;|&nbsp;<b>Categoría:</b> {cat}"
-                    f"</div>",
+                    f"<div style='border-top:1px solid #E5E7EB;margin:10px 0 6px;'></div>",
                     unsafe_allow_html=True
                 )
+                col_ai, col_chat = st.columns([1, 1])
+                with col_ai:
+                    _render_ai_inline(var, sigma_a, cambio7, val_act, mu_base, tend, color_txt)
+                with col_chat:
+                    if st.button("💬 Preguntar al analista", key=f"chat_open_{var}"):
+                        st.session_state["chat_var"] = var
+                        st.session_state["chat_alerta"] = alerta
+                        if f"chat_msgs_{var}" not in st.session_state:
+                            st.session_state[f"chat_msgs_{var}"] = []
 
-            # Gráfica histórica
-            df_var_h = df_vars[df_vars["nombre"] == var].sort_values("fecha") if not df_vars.empty else pd.DataFrame()
-            if not df_var_h.empty and fc is not None:
-                fc_ts = pd.Timestamp(fc)
-                pre_s = df_var_h[df_var_h["fecha"] <  fc_ts]
-                pos_s = df_var_h[df_var_h["fecha"] >= fc_ts]
-                fig2  = go.Figure()
-                if not pre_s.empty:
-                    fig2.add_trace(go.Scatter(
-                        x=pre_s["fecha"], y=pre_s["valor"],
-                        line=dict(color=COLORS["primary"], width=1.5),
-                        opacity=0.6, name="Pre-evento",
-                    ))
-                if not pos_s.empty:
-                    fig2.add_trace(go.Scatter(
-                        x=pos_s["fecha"], y=pos_s["valor"],
-                        line=dict(color=COLORS["danger"], width=2.2),
-                        name="Post-evento",
-                    ))
-                    fig2.add_vrect(
-                        x0=str(fc_ts.date()),
-                        x1=str(pos_s["fecha"].max().date()),
-                        fillcolor="rgba(192,57,43,0.06)",
-                        line_width=0,
-                    )
-                fig2.update_layout(
-                    paper_bgcolor=COLORS["surface"],
-                    plot_bgcolor=COLORS["background"],
-                    font=dict(family="Inter", size=9, color=COLORS["text"]),
-                    margin=dict(l=40, r=20, t=25, b=35),
-                    height=220, showlegend=False,
-                    xaxis=dict(showgrid=False),
-                    yaxis=dict(gridcolor="#E5E7EB"),
-                )
-                st.plotly_chart(fig2, use_container_width=True)
+            # Noticias
+            st.markdown("**📰 Noticias relacionadas:**")
+            _render_noticias_tabs(var, color_txt, color_bg)
 
-            # ── Panel de noticias mejorado ─────────────────────────────────
-            _render_panel_noticias(var, color_txt, color_bg)
+    st.divider()
+
+else:
+    st.info(
+        f"No hay alertas activas con umbral {umbral_sigma}σ. "
+        "Reduce la sensibilidad en el sidebar para ver más variables."
+    )
+    st.divider()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SECCIÓN B — EXPLORAR VARIABLE
+# Permite ver tendencia, noticias y análisis IA de cualquier variable
+# sin necesidad de que esté en alerta
+# ════════════════════════════════════════════════════════════════════════════
+seccion_titulo(
+    "🔍 Explorar Variable de Mercado",
+    "Selecciona cualquier variable para ver su tendencia, noticias y análisis IA"
+)
+
+all_vars   = sorted(QUERIES.keys())
+var_expl   = st.selectbox("Variable", all_vars, key="expl_var",
+                           format_func=lambda v: v.replace("_", " "))
+
+df_expl    = df_vars[df_vars["nombre"] == var_expl].sort_values("fecha") if not df_vars.empty else pd.DataFrame()
+color_expl = COLORS["primary"]
+
+if not df_expl.empty:
+    mu_expl = float(df_expl["valor"].iloc[:-45].mean()) if len(df_expl) > 50 else float(df_expl["valor"].mean())
+    val_expl = float(df_expl["valor"].iloc[-1])
+    sigma_expl_val = float(
+        (df_expl["valor"].iloc[-5:].mean() - mu_expl) / (df_expl["valor"].iloc[:-45].std() + 1e-9)
+    ) if len(df_expl) > 50 else 0.0
+    cambio_expl = float(
+        (df_expl["valor"].iloc[-1] / df_expl["valor"].iloc[-8] - 1) * 100
+    ) if len(df_expl) >= 8 else 0.0
+
+    col_e1, col_e2, col_e3 = st.columns(3)
+    col_e1.metric("Valor actual",    f"{val_expl:,.2f}")
+    col_e2.metric("Cambio 7 días",   f"{cambio_expl:+.1f}%")
+    col_e3.metric("Sigma vs base",   f"{sigma_expl_val:+.2f}σ")
+
+    _render_chart(df_expl.assign(nombre=var_expl), var_expl, mu_expl, umbral_sigma, color_expl)
+else:
+    mu_expl       = 0.0
+    sigma_expl_val = 0.0
+    cambio_expl   = 0.0
+    st.info("Sin datos para esta variable.")
+
+# AI para variable explorada — fuera de expander/loop → DOM estable
+if _GEMINI_KEY:
+    skey_expl = f"ai_{var_expl}_{round(sigma_expl_val, 1)}"
+    col_btn_e, col_frz_e = st.columns([1, 2])
+    with col_btn_e:
+        run_expl = st.button("🤖 Análisis IA", key="expl_ai_btn")
+    with col_frz_e:
+        frz_expl = st.checkbox("Regenerar (ignorar caché)", key="expl_ai_chk")
+    if run_expl:
+        nots_expl = _noticias_var_cached(var_expl)
+        st.session_state[skey_expl] = analizar_alerta(
+            variable=var_expl, sigma=sigma_expl_val, cambio7=cambio_expl,
+            valor=val_expl if not df_expl.empty else 0.0,
+            media_base=mu_expl, tendencia="sube" if cambio_expl > 0 else "baja",
+            noticias=nots_expl, api_key=_GEMINI_KEY,
+            scrape_articles=False, force_refresh=frz_expl,
+        )
+    res_expl = st.session_state.get(skey_expl) or _cache_load(_cache_key(var_expl, sigma_expl_val))
+    st.markdown(_ai_html(res_expl, color_expl), unsafe_allow_html=True)
+
+st.markdown("**📰 Noticias:**")
+_render_noticias_tabs(var_expl, color_expl, "#EBF5FB")
+st.divider()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SECCIÓN C — CHAT CON EL ANALISTA
+# Se activa al pulsar "💬 Preguntar" en cualquier alerta.
+# Colocado aquí (fuera de loops/expanders) para evitar el NotFoundError.
+# ════════════════════════════════════════════════════════════════════════════
+chat_var    = st.session_state.get("chat_var")
+chat_alerta = st.session_state.get("chat_alerta", {})
+
+if chat_var and _GEMINI_KEY:
+    color_chat, bg_chat = SEV_COLORS.get(
+        chat_alerta.get("severidad","Moderado"), ("#185FA5","#E6F1FB")
+    )
+    seccion_titulo(
+        f"💬 Chat · {chat_var.replace('_',' ')}",
+        f"Conversa con el analista de IA sobre esta alerta · {chat_alerta.get('severidad','')} "
+        f"({chat_alerta.get('sigma_actual', 0):+.2f}σ)"
+    )
+
+    chat_key = f"chat_msgs_{chat_var}"
+    if chat_key not in st.session_state:
+        st.session_state[chat_key] = []
+
+    # Contexto de la alerta para el LLM
+    _ctx = (
+        f"Variable: {chat_var.replace('_',' ')} | Sigma: {chat_alerta.get('sigma_actual',0):+.2f}σ "
+        f"({chat_alerta.get('severidad','')}) | Cambio 7d: {chat_alerta.get('cambio_7d_pct',0):+.1f}% | "
+        f"Valor: {chat_alerta.get('valor_actual',0):,.2f} | Base: {chat_alerta.get('media_base',0):,.2f} | "
+        f"Tendencia: {chat_alerta.get('tendencia','')}"
+    )
+
+    # Mostrar historial
+    messages = st.session_state[chat_key]
+    with st.container(height=380):
+        if not messages:
+            st.markdown(
+                f"<div style='text-align:center;color:#9CA3AF;padding:40px;font-size:13px;'>"
+                f"Escribe una pregunta sobre <b>{chat_var.replace('_',' ')}</b> "
+                f"para iniciar la conversación.</div>",
+                unsafe_allow_html=True
+            )
+        for msg in messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+    # Input de chat (inline — no floating)
+    prompt = st.chat_input(
+        f"Pregunta sobre {chat_var.replace('_',' ')}...",
+        key=f"chat_input_{chat_var}"
+    )
+    if prompt:
+        messages.append({"role": "user", "content": prompt})
+        # Construir prompt con contexto + historial
+        hist_txt = "\n".join(
+            f"{'Analista' if m['role']=='assistant' else 'Usuario'}: {m['content']}"
+            for m in messages[:-1]
+        )
+        full_prompt = (
+            f"Contexto de alerta: {_ctx}\n\n"
+            f"{'Conversación previa:\n' + hist_txt if hist_txt else ''}\n\n"
+            f"Usuario: {prompt}"
+        )
+        resp_txt = _call_gemini_text(full_prompt, _GEMINI_KEY)
+        messages.append({"role": "assistant", "content": resp_txt})
+        st.session_state[chat_key] = messages
+        st.rerun()
+
+    if st.button("🗑 Limpiar conversación", key="chat_clear"):
+        st.session_state[chat_key] = []
+        st.session_state["chat_var"] = None
+        st.rerun()
