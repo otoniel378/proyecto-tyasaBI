@@ -56,8 +56,12 @@ apg_soon = st.Page("pages/ap_galvanizados/coming_soon.py", title="Aceros Galvani
 # ── Aceros Planos — Formados (EN DESARROLLO) ─────────────────────────────
 apf_soon = st.Page("pages/ap_formados/coming_soon.py", title="Aceros Formados", icon="🔧", url_path="ap_formados")
 
-# ── Aceros Largos (PROXIMO) ──────────────────────────────────────────────
-al_soon = st.Page("pages/aceros_largos/coming_soon.py", title="Aceros Largos", icon="📏", url_path="aceros_largos")
+# ── Aceros Largos (COMPLETADO) ──────────────────────────────────────────
+al_resumen    = st.Page("pages/aceros_largos/01_resumen.py",        title="Resumen Ejecutivo",     icon="📊")
+al_macro      = st.Page("pages/aceros_largos/02_macroeconomia.py",  title="Macroeconomía",         icon="🏦")  
+al_mercado    = st.Page("pages/aceros_largos/03_mercado.py",        title="Mercado y Costos",      icon="💹")
+al_operaciones = st.Page("pages/aceros_largos/04_operaciones.py",   title="Operaciones",           icon="⚙️")
+al_calidad    = st.Page("pages/aceros_largos/05_calidad.py",        title="Calidad",               icon="✅")
 
 # ── Aceros SBQ (PROXIMO) ─────────────────────────────────────────────────
 sbq_soon = st.Page("pages/aceros_sbq/coming_soon.py", title="Aceros SBQ", icon="🔑", url_path="aceros_sbq")
@@ -75,7 +79,7 @@ pg = st.navigation({
     "Aceros Planos — Negros": [apn_resumen, apn_seg, apn_series, apn_forecast, apn_mix],
     "Aceros Planos — Galvanizados": [apg_soon],
     "Aceros Planos — Formados": [apf_soon],
-    "Aceros Largos": [al_soon],
+    "Aceros Largos": [al_resumen, al_macro, al_mercado, al_operaciones, al_calidad],
     "Aceros SBQ": [sbq_soon],
     "Mercado Global": [mkt_monitor, mkt_vars, mkt_industria],
 })
