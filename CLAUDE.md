@@ -96,3 +96,13 @@ Las notas de cada sesión se guardan en:
 C:\Users\OTONIEL\Desktop\obsidian\sesiones\
 Plantilla: templates/sesion-claude.md
 Última sesión: 2026-04-12 — Sincronización repo → Obsidian
+
+## Regla de documentación en Obsidian
+Cuando el usuario pida "anota esto en Obsidian" o "actualiza Obsidian" al final de una tarea:
+1. Crear o actualizar C:\Users\OTONIEL\Desktop\obsidian\sesiones\YYYY-MM-DD-<tema>.md
+2. Actualizar la sección correspondiente en C:\Users\OTONIEL\Desktop\obsidian\proyectos\bi-principal.md
+   - Módulos completados / en desarrollo
+   - Tablas BQ nuevas
+   - Decisiones arquitectónicas nuevas
+   - Log de sesiones
+3. Si hay una nueva tabla BQ, decisión de arquitectura o módulo nuevo → reflejar en este CLAUDE.md también

@@ -388,13 +388,60 @@ if _GEMINI_KEY:
 
 st.markdown("**📰 Noticias:**")
 _render_noticias_tabs(var_expl, color_expl, "#EBF5FB")
+
+# ── Comparación multi-variable ────────────────────────────────────────────────
+st.markdown(
+    "<div style='border-top:1px solid #E5E7EB;margin:18px 0 12px;'></div>"
+    "<div style='font-size:14px;font-weight:700;color:#1B3A5C;margin-bottom:4px;'>"
+    "🔗 Cruzar variables y consultar al analista</div>"
+    "<div style='font-size:12px;color:#6B7280;margin-bottom:10px;'>"
+    "Selecciona 2 a 5 variables — el analista cruzará su información y responderá en contexto</div>",
+    unsafe_allow_html=True
+)
+
+vars_compare = st.multiselect(
+    "Variables a cruzar",
+    all_vars,
+    default=[var_expl],
+    max_selections=5,
+    key="expl_vars_compare",
+    format_func=lambda v: v.replace("_", " "),
+)
+
+# Métricas compactas de cada variable seleccionada
+if vars_compare and not df_vars.empty:
+    cols_cmp = st.columns(len(vars_compare))
+    for i, v in enumerate(vars_compare):
+        df_v = df_vars[df_vars["nombre"] == v].sort_values("fecha")
+        if not df_v.empty:
+            val_v    = float(df_v["valor"].iloc[-1])
+            mu_v     = float(df_v["valor"].iloc[:-45].mean()) if len(df_v) > 50 else float(df_v["valor"].mean())
+            cambio_v = float((df_v["valor"].iloc[-1] / df_v["valor"].iloc[-8] - 1) * 100) if len(df_v) >= 8 else 0.0
+            sigma_v  = float((df_v["valor"].iloc[-5:].mean() - mu_v) / (df_v["valor"].iloc[:-45].std() + 1e-9)) if len(df_v) > 50 else 0.0
+            with cols_cmp[i]:
+                st.metric(
+                    v.replace("_", " "),
+                    f"{val_v:,.2f}",
+                    f"{cambio_v:+.1f}% · {sigma_v:+.1f}σ",
+                )
+
+col_cmp_btn, col_cmp_info = st.columns([1, 3])
+with col_cmp_btn:
+    if st.button("💬 Preguntar al analista", key="expl_chat_open", use_container_width=True):
+        st.session_state["chat_compare_vars"] = vars_compare
+        if "chat_compare_msgs" not in st.session_state:
+            st.session_state["chat_compare_msgs"] = []
+with col_cmp_info:
+    st.caption("El analista recibirá datos actuales, sigma y tendencia de todas las variables seleccionadas.")
+
 st.divider()
 
 
 # ════════════════════════════════════════════════════════════════════════════
 # SECCIÓN C — CHAT CON EL ANALISTA
-# Se activa al pulsar "💬 Preguntar" en cualquier alerta.
-# Colocado aquí (fuera de loops/expanders) para evitar el NotFoundError.
+# C1: alerta específica (botón dentro de alertas)
+# C2: cruce de variables (botón en Explorador)
+# Ambos fuera de loops/expanders → DOM estable
 # ════════════════════════════════════════════════════════════════════════════
 chat_var    = st.session_state.get("chat_var")
 chat_alerta = st.session_state.get("chat_alerta", {})
@@ -461,3 +508,100 @@ if chat_var and _GEMINI_KEY:
         st.session_state[chat_key] = []
         st.session_state["chat_var"] = None
         st.rerun()
+
+
+# ── C2: Chat cruce de variables ───────────────────────────────────────────────
+chat_compare_vars = st.session_state.get("chat_compare_vars", [])
+
+if chat_compare_vars and _GEMINI_KEY:
+    seccion_titulo(
+        f"💬 Analista · Cruce de variables ({len(chat_compare_vars)})",
+        "El analista cruza los datos de todas las variables seleccionadas para responder tu pregunta"
+    )
+
+    # Construir contexto con stats de cada variable
+    def _ctx_compare(vars_list: list[str]) -> str:
+        partes = []
+        for v in vars_list:
+            df_v = df_vars[df_vars["nombre"] == v].sort_values("fecha") if not df_vars.empty else pd.DataFrame()
+            if df_v.empty:
+                partes.append(f"- {v.replace('_',' ')}: sin datos disponibles")
+                continue
+            val_v    = float(df_v["valor"].iloc[-1])
+            mu_v     = float(df_v["valor"].iloc[:-45].mean()) if len(df_v) > 50 else float(df_v["valor"].mean())
+            cambio_v = float((df_v["valor"].iloc[-1] / df_v["valor"].iloc[-8] - 1) * 100) if len(df_v) >= 8 else 0.0
+            sigma_v  = float((df_v["valor"].iloc[-5:].mean() - mu_v) / (df_v["valor"].iloc[:-45].std() + 1e-9)) if len(df_v) > 50 else 0.0
+            tend_v   = "alcista" if cambio_v > 0 else "bajista"
+            # Última alerta detectada para esta variable (si existe)
+            alerta_v = next((a for a in alertas_live if a["variable"] == v), None)
+            alerta_txt = f" | Severidad: {alerta_v['severidad']}" if alerta_v else ""
+            partes.append(
+                f"- {v.replace('_',' ')}: valor={val_v:,.2f}, base={mu_v:,.2f}, "
+                f"cambio_7d={cambio_v:+.1f}%, sigma={sigma_v:+.2f}σ, tendencia={tend_v}{alerta_txt}"
+            )
+        return "\n".join(partes)
+
+    ctx_cmp = _ctx_compare(chat_compare_vars)
+
+    # Badge visual con variables seleccionadas
+    badges_html = "".join(
+        f"<span style='background:#EEF2FF;color:#3730A3;padding:3px 10px;border-radius:20px;"
+        f"font-size:12px;font-weight:600;margin-right:4px;'>{v.replace('_',' ')}</span>"
+        for v in chat_compare_vars
+    )
+    st.markdown(
+        f"<div style='margin-bottom:12px;'>Variables en contexto: {badges_html}</div>",
+        unsafe_allow_html=True
+    )
+
+    cmp_key = "chat_compare_msgs"
+    if cmp_key not in st.session_state:
+        st.session_state[cmp_key] = []
+
+    msgs_cmp = st.session_state[cmp_key]
+
+    with st.container(height=380):
+        if not msgs_cmp:
+            nombres = ", ".join(v.replace("_", " ") for v in chat_compare_vars)
+            st.markdown(
+                f"<div style='text-align:center;color:#9CA3AF;padding:40px;font-size:13px;'>"
+                f"Escribe una pregunta para analizar en conjunto:<br><b>{nombres}</b></div>",
+                unsafe_allow_html=True
+            )
+        for msg in msgs_cmp:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+    prompt_cmp = st.chat_input(
+        "Pregunta sobre las variables seleccionadas...",
+        key="chat_input_compare"
+    )
+    if prompt_cmp:
+        msgs_cmp.append({"role": "user", "content": prompt_cmp})
+        hist_txt_cmp = "\n".join(
+            f"{'Analista' if m['role']=='assistant' else 'Usuario'}: {m['content']}"
+            for m in msgs_cmp[:-1]
+        )
+        full_prompt_cmp = (
+            f"Eres un analista de materias primas y mercados siderúrgicos para TYASA México.\n\n"
+            f"Datos actuales de las variables seleccionadas:\n{ctx_cmp}\n\n"
+            f"{'Conversación previa:\n' + hist_txt_cmp + chr(10) if hist_txt_cmp else ''}"
+            f"Usuario: {prompt_cmp}\n\n"
+            f"Responde cruzando la información de todas las variables, identifica correlaciones, "
+            f"riesgos compartidos e impacto potencial en la operación de TYASA."
+        )
+        resp_cmp = _call_gemini_text(full_prompt_cmp, _GEMINI_KEY)
+        msgs_cmp.append({"role": "assistant", "content": resp_cmp})
+        st.session_state[cmp_key] = msgs_cmp
+        st.rerun()
+
+    col_cmp_clr, col_cmp_close = st.columns([1, 1])
+    with col_cmp_clr:
+        if st.button("🗑 Limpiar conversación", key="chat_compare_clear"):
+            st.session_state[cmp_key] = []
+            st.rerun()
+    with col_cmp_close:
+        if st.button("✕ Cerrar panel", key="chat_compare_close"):
+            st.session_state["chat_compare_vars"] = []
+            st.session_state[cmp_key] = []
+            st.rerun()
