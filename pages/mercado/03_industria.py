@@ -1,10 +1,10 @@
 """
 03_industria.py — Monitor de la Industria Siderúrgica — TYASA BI
-Mañanera presidencial · Noticias especializadas · Síntesis IA · Análisis de tendencias
+Mañanera presidencial · Noticias Nacionales e Internacionales · Síntesis IA
 
-DOM-STABLE: Cero componentes condicionales.
-  - st.spinner eliminado → st.empty() con HTML de estado (cargando / resultado / vacío)
-  - Todas las secciones de resultado usan 1 st.markdown / st.empty() fijo
+DOM-STABLE: cero componentes condicionales.
+  - st.spinner eliminado → st.empty() con HTML de estado
+  - Todas las secciones de resultado usan 1 st.empty() fijo
   - st.chat_message loop eliminado → _render_chat_html() con burbujas HTML
 """
 import os, sys
@@ -18,7 +18,15 @@ from pathlib import Path
 
 import streamlit as st
 from config import COLORS
-from mercado_noticias.analytics.noticias import buscar_noticias_industria, GRUPOS_INDUSTRIA
+from mercado_noticias.analytics.noticias import (
+    buscar_noticias_industria,
+    buscar_noticias_sector,
+    GRUPOS_INDUSTRIA,
+    GRUPOS_NACIONAL,
+    GRUPOS_INTERNACIONAL,
+    GRUPO_STYLE_NACIONAL,
+    GRUPO_STYLE_INTERNACIONAL,
+)
 from mercado_noticias.analytics.ai_analysis import sintesis_industrial, _call_gemini_text
 from mercado_noticias.analytics.mananera import analizar_mananera, MANANERA_CACHE_DIR, MANANERA_CACHE_DAYS
 from core.components.filters import sidebar_header
@@ -30,14 +38,7 @@ try:
 except Exception:
     _GEMINI_KEY = ""
 
-# ── Paletas ───────────────────────────────────────────────────────────────────
-GRUPO_STYLE: dict[str, tuple[str, str]] = {
-    "Urgente":    ("#DC2626", "#FEE2E2"),
-    "Tendencias": ("#059669", "#D1FAE5"),
-    "Empresas":   ("#2563EB", "#DBEAFE"),
-    "Insumos":    ("#D97706", "#FEF3C7"),
-    "Tecnología": ("#7C3AED", "#EDE9FE"),
-}
+# ── Paletas locales ───────────────────────────────────────────────────────────
 ALERTA_STYLE: dict[str, tuple[str, str]] = {
     "Alto":  ("#DC2626", "#FEE2E2"),
     "Medio": ("#D97706", "#FEF3C7"),
@@ -50,7 +51,7 @@ ALERTA_STYLE: dict[str, tuple[str, str]] = {
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def _noticias_grupo(grupo: str, max_r: int = 14) -> list[dict]:
-    return buscar_noticias_industria(grupo, max_resultados=max_r)
+    return buscar_noticias_sector(grupo, max_resultados=max_r)
 
 
 def _filtrar_por_fecha(noticias: list[dict], desde: str, hasta: str) -> list[dict]:
@@ -62,8 +63,11 @@ def _filtrar_por_fecha(noticias: list[dict], desde: str, hasta: str) -> list[dic
     return out
 
 
-def _render_news_card(n: dict, grupo: str) -> str:
-    c_txt, c_bg = GRUPO_STYLE.get(grupo, ("#374151", "#F9FAFB"))
+def _render_news_card(n: dict, grupo: str,
+                      style_map: dict | None = None) -> str:
+    default_style = {**GRUPO_STYLE_NACIONAL, **GRUPO_STYLE_INTERNACIONAL}
+    sm = style_map or default_style
+    c_txt, c_bg = sm.get(grupo, ("#374151", "#F9FAFB"))
     titulo = (n.get("titulo", "") or "").strip()
     desc   = (n.get("descripcion", "") or "").strip()[:220]
     fuente = (n.get("fuente", "") or "").strip()
@@ -77,7 +81,7 @@ def _render_news_card(n: dict, grupo: str) -> str:
     ) if url else ""
     return (
         f"<div style='border:1px solid #E5E7EB;border-radius:10px;padding:16px;"
-        f"background:white;box-shadow:0 1px 4px rgba(0,0,0,0.06);margin-bottom:12px;'>"
+        f"background:white;box-shadow:0 1px 4px rgba(0,0,0,0.06);'>"
         f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;'>"
         f"<span style='font-size:10px;font-weight:700;letter-spacing:0.06em;"
         f"background:{c_bg};color:{c_txt};padding:3px 10px;border-radius:20px;'>{grupo.upper()}</span>"
@@ -90,18 +94,15 @@ def _render_news_card(n: dict, grupo: str) -> str:
         f"<span style='font-size:11px;color:#9CA3AF;display:flex;gap:6px;align-items:center;'>"
         f"📰 {fuente} "
         f"<span style='background:{bc};color:white;padding:1px 6px;border-radius:4px;font-size:9px;'>{badge}</span>"
-        f"</span>"
-        f"{link}"
-        f"</div></div>"
+        f"</span>{link}</div></div>"
     )
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# HELPERS — SÍNTESIS (HTML puro, sin componentes condicionales)
+# HELPERS — SÍNTESIS
 # ════════════════════════════════════════════════════════════════════════════
 
 def _render_sintesis_full(result: dict | None, loading: bool = False) -> str:
-    """Estado de la síntesis como HTML. Siempre 1 componente → DOM estable."""
     if loading:
         return (
             "<div style='background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;"
@@ -165,15 +166,16 @@ def _sintesis_card(titulo: str, texto: str, c_txt: str, c_bg: str, icon: str) ->
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# HELPERS — MAÑANERA (HTML puro, sin componentes condicionales)
+# HELPERS — MAÑANERA
 # ════════════════════════════════════════════════════════════════════════════
 
 _TIPO_STYLE: dict[str, tuple[str, str]] = {
-    "Regulación":  ("#7C3AED", "#EDE9FE"),
-    "Energía":     ("#D97706", "#FEF3C7"),
-    "Demanda":     ("#2563EB", "#DBEAFE"),
-    "Riesgo":      ("#DC2626", "#FEE2E2"),
-    "Oportunidad": ("#059669", "#D1FAE5"),
+    "Regulación":   ("#7C3AED", "#EDE9FE"),
+    "Energía":      ("#D97706", "#FEF3C7"),
+    "Demanda":      ("#2563EB", "#DBEAFE"),
+    "Riesgo":       ("#DC2626", "#FEE2E2"),
+    "Oportunidad":  ("#059669", "#D1FAE5"),
+    "Macroeconomía":("#0F766E", "#CCFBF1"),
 }
 _IMP_STYLE: dict[str, tuple[str, str]] = {
     "Alto":  ("#DC2626", "#FEE2E2"),
@@ -182,19 +184,24 @@ _IMP_STYLE: dict[str, tuple[str, str]] = {
 }
 _DIR_ICON  = {"Positivo": "↑", "Negativo": "↓", "Neutral": "→"}
 _DIR_COLOR = {"Positivo": "#059669", "Negativo": "#DC2626", "Neutral": "#6B7280"}
+_PROD_STYLE: dict[str, tuple[str, str]] = {
+    "Tubería OCTG":       ("#92400E", "#FEF3C7"),
+    "Tubería Mecánica":   ("#1B3A5C", "#E8EFF6"),
+    "Perfiles":           ("#0F766E", "#CCFBF1"),
+    "SBQ":                ("#4338CA", "#E0E7FF"),
+    "Lámina Negra":       ("#374151", "#F3F4F6"),
+    "Galvanizado":        ("#065F46", "#D1FAE5"),
+}
 _AREA_STYLE: dict[str, tuple[str, str]] = {
-    "SBQ":           ("#1B3A5C", "#E8EFF6"),
-    "Aceros Planos": ("#0F766E", "#CCFBF1"),
-    "Aceros Largos": ("#4338CA", "#E0E7FF"),
+    "SBQ":            ("#1B3A5C", "#E8EFF6"),
+    "Aceros Planos":  ("#0F766E", "#CCFBF1"),
+    "Aceros Largos":  ("#4338CA", "#E0E7FF"),
+    "Energía/Costos": ("#D97706", "#FEF3C7"),
+    "Comercial":      ("#059669", "#D1FAE5"),
 }
 
 
 def _render_mananera_full(result: dict | None, loading: bool = False) -> str:
-    """
-    Toda el área de resultados de la mañanera como HTML.
-    loading=True → indicador animado en HTML.
-    Siempre se llama con 1 st.empty() → árbol DOM estable.
-    """
     if loading:
         return (
             "<div style='background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;"
@@ -202,7 +209,7 @@ def _render_mananera_full(result: dict | None, loading: bool = False) -> str:
             "<div style='font-size:28px;margin-bottom:10px;'>⏳</div>"
             "<b>Analizando la conferencia mañanera…</b><br>"
             "<span style='font-size:12px;color:#0284C7;'>"
-            "Buscando el video en YouTube → obteniendo la transcripción → "
+            "Buscando el video en YouTube → obteniendo transcripción → "
             "procesando con IA. Puede tardar entre 20 y 60 segundos.</span></div>"
         )
     if result is None:
@@ -210,7 +217,7 @@ def _render_mananera_full(result: dict | None, loading: bool = False) -> str:
             "<div style='background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;"
             "padding:16px;color:#0369A1;font-size:13px;'>"
             "ℹ️ Haz clic en <b>▶ Analizar</b> para que la IA procese la conferencia "
-            "presidencial y extraiga solo la información relevante para el sector acero."
+            "presidencial y extraiga solo la información relevante para TYASA."
             "</div>"
         )
     err = result.get("_error", "")
@@ -241,7 +248,7 @@ def _render_mananera_full(result: dict | None, loading: bool = False) -> str:
             f"<div style='background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;"
             f"padding:16px;color:#0369A1;font-size:13px;'>"
             f"ℹ️ La conferencia del <b>{fecha}</b> no contiene información relevante "
-            f"para la industria siderúrgica según el análisis de IA.{yt}</div>"
+            f"para TYASA según el análisis de IA.{yt}</div>"
         )
     resumen  = result.get("resumen_ejecutivo", [])
     impactos = result.get("analisis_impacto", [])
@@ -294,16 +301,26 @@ def _man_impacto_html(items: list[dict]) -> str:
         return ""
     cards = []
     for item in items:
-        tipo  = item.get("tipo", "")
-        imp   = item.get("impacto", "")
-        dire  = item.get("direccion", "")
-        areas = item.get("areas_afectadas", [])
-        punto = item.get("punto", "")
-        expl  = item.get("explicacion", "")
+        tipo     = item.get("tipo", "")
+        imp      = item.get("impacto", "")
+        dire     = item.get("direccion", "")
+        areas    = item.get("areas_afectadas", [])
+        productos= item.get("productos_afectados", [])
+        punto    = item.get("punto", "")
+        expl     = item.get("explicacion", "")
+
         tc, tb = _TIPO_STYLE.get(tipo, ("#6B7280", "#F3F4F6"))
         ic, ib = _IMP_STYLE.get(imp,  ("#6B7280", "#F3F4F6"))
         dc     = _DIR_COLOR.get(dire, "#6B7280")
         di     = _DIR_ICON.get(dire, "→")
+
+        prod_tags = "".join(
+            f"<span style='background:{_PROD_STYLE.get(p, ('#1B3A5C','#E8EFF6'))[1]};"
+            f"color:{_PROD_STYLE.get(p, ('#1B3A5C','#E8EFF6'))[0]};"
+            f"padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;'>"
+            f"📦 {p}</span>"
+            for p in productos
+        )
         area_tags = "".join(
             f"<span style='background:{_AREA_STYLE.get(a, ('#6B7280','#F3F4F6'))[1]};"
             f"color:{_AREA_STYLE.get(a, ('#6B7280','#F3F4F6'))[0]};"
@@ -323,15 +340,16 @@ def _man_impacto_html(items: list[dict]) -> str:
             f"<span style='background:#F9FAFB;color:{dc};padding:2px 8px;border-radius:10px;"
             f"font-size:10px;font-weight:700;border:1px solid #E5E7EB;'>{di} {dire}</span>"
             f"</div>"
-            f"<div style='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;'>{area_tags}</div>"
-            f"<div style='font-size:12px;color:#6B7280;line-height:1.55;'>{expl}</div>"
+            + (f"<div style='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;'>{prod_tags}</div>" if prod_tags else "")
+            + (f"<div style='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;'>{area_tags}</div>" if area_tags else "")
+            + f"<div style='font-size:12px;color:#6B7280;line-height:1.55;'>{expl}</div>"
             f"</div>"
         )
     grid = "".join(f"<div>{c}</div>" for c in cards)
     return (
         f"<div style='margin-bottom:6px;'>"
         f"<span style='font-size:12px;font-weight:800;letter-spacing:0.06em;"
-        f"color:#1B3A5C;'>🔍 ANÁLISIS DE IMPACTO</span></div>"
+        f"color:#1B3A5C;'>🔍 ANÁLISIS DE IMPACTO PARA TYASA</span></div>"
         f"<div style='display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));"
         f"gap:12px;margin-bottom:16px;'>{grid}</div>"
     )
@@ -375,11 +393,10 @@ def _man_insight_rec_html(insight: str, rec: str) -> str:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# HELPERS — CHAT (HTML puro, sin st.chat_message en loop)
+# HELPERS — CHAT
 # ════════════════════════════════════════════════════════════════════════════
 
 def _render_chat_html(msgs: list[dict], has_key: bool) -> str:
-    """Historial del chat como burbujas HTML. 1 st.empty() → DOM estable."""
     if not has_key:
         return (
             "<div style='background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;"
@@ -423,34 +440,23 @@ def _render_chat_html(msgs: list[dict], has_key: bool) -> str:
 # SIDEBAR
 # ════════════════════════════════════════════════════════════════════════════
 sidebar_header("Industria Siderúrgica", "🏭")
-st.sidebar.caption(
-    "Noticias especializadas del sector acero México y global.\n\n"
-    "Fuentes: Google News · worldsteel · CANACERO · reportacero\n\n"
-    "Caché de noticias: 30 min · Síntesis IA: 24 h"
-)
 
 # ════════════════════════════════════════════════════════════════════════════
 # HEADER
 # ════════════════════════════════════════════════════════════════════════════
 st.markdown(
-    f"<h2 style='color:{COLORS['primary']};margin-bottom:0;'>🏭 Monitor de la Industria Siderúrgica</h2>"
-    f"<p style='color:#6B7280;'>Noticias especializadas en tiempo real · Síntesis IA · "
-    f"Tendencias México y global</p>",
+    f"<h2 style='color:{COLORS['primary']};margin-bottom:0;'>🏭 Monitor de la Industria Siderúrgica</h2>",
     unsafe_allow_html=True,
 )
 st.divider()
 
 # ════════════════════════════════════════════════════════════════════════════
 # SECCIÓN 0 — ANALISTA DE LA MAÑANERA PRESIDENCIAL
-# DOM: st.columns(4) + st.empty() siempre presentes — cero condicionales
 # ════════════════════════════════════════════════════════════════════════════
-seccion_titulo(
-    "🇲🇽 Analista de la Mañanera Presidencial",
-    "Extrae automáticamente de la conferencia diaria solo lo relevante para la industria siderúrgica"
-)
+seccion_titulo("🇲🇽 Analista de la Mañanera Presidencial")
 
 hoy_man = datetime.date.today()
-col_fman, col_bman, col_frzman, col_infoman = st.columns([2, 1, 1, 3])
+col_fman, col_bman, col_frzman = st.columns([3, 1, 1])
 with col_fman:
     fecha_man = st.date_input(
         "Fecha de la conferencia",
@@ -466,17 +472,10 @@ with col_bman:
 with col_frzman:
     st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
     frz_man = st.checkbox("Regenerar", key="man_frz", value=False)
-with col_infoman:
-    st.caption(
-        "Busca en YouTube la conferencia (en vivo o grabada) → obtiene la transcripción → "
-        "filtra con IA solo información de acero, energía, aranceles e infraestructura · "
-        "Caché 3 días"
-    )
 
 fecha_man_str = str(fecha_man)
 skey_man = f"mananera_{fecha_man_str}"
 
-# Auto-cargar desde disco si hay caché para la fecha seleccionada
 if skey_man not in st.session_state:
     cache_path_man = MANANERA_CACHE_DIR / f"{fecha_man_str}.json"
     if cache_path_man.exists():
@@ -488,11 +487,9 @@ if skey_man not in st.session_state:
         except Exception:
             pass
 
-# st.empty() fijo → actualizado con HTML de carga, resultado o vacío (sin spinner)
 man_area = st.empty()
 
 if run_man and _GEMINI_KEY:
-    # Mostrar loading inmediatamente, luego reemplazar con resultado
     man_area.markdown(_render_mananera_full(None, loading=True), unsafe_allow_html=True)
     st.session_state[skey_man] = analizar_mananera(_GEMINI_KEY, fecha_man_str, force_refresh=frz_man)
 elif run_man:
@@ -510,20 +507,14 @@ st.divider()
 
 # ════════════════════════════════════════════════════════════════════════════
 # SECCIÓN A — SÍNTESIS INDUSTRIAL IA
-# DOM: st.columns(3) + st.empty() siempre presentes — cero condicionales
 # ════════════════════════════════════════════════════════════════════════════
-seccion_titulo(
-    "🤖 Síntesis Industrial",
-    "Resumen ejecutivo generado por IA con las noticias más recientes del sector"
-)
+seccion_titulo("🤖 Síntesis Industrial")
 
-col_btn_s, col_frz_s, col_info_s = st.columns([1, 1, 3])
+col_btn_s, col_frz_s = st.columns([1, 1])
 with col_btn_s:
     run_sint = st.button("▶ Generar síntesis", key="sint_run")
 with col_frz_s:
     frz_sint = st.checkbox("Regenerar", key="sint_frz", value=False)
-with col_info_s:
-    st.caption("Análisis de Impacto en Precios · Tendencias México · Riesgos Globales · Caché 24 h")
 
 sint_area = st.empty()
 
@@ -543,13 +534,9 @@ sint_area.markdown(
 st.divider()
 
 # ════════════════════════════════════════════════════════════════════════════
-# SECCIÓN B — NOTICIAS POR GRUPO (Tabs)
-# DOM: st.tabs() + 1 st.markdown por tab — siempre estable
+# SECCIÓN B — NOTICIAS (Nacionales + Internacionales)
 # ════════════════════════════════════════════════════════════════════════════
-seccion_titulo(
-    "📰 Noticias de la Industria",
-    "Resultados en tiempo real desde Google News · Organizados por tema"
-)
+seccion_titulo("📰 Noticias de la Industria")
 
 hoy      = datetime.date.today()
 hace_30d = hoy - datetime.timedelta(days=30)
@@ -566,7 +553,7 @@ with col_rng:
     )
 with col_act:
     st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
-    if st.button("🔄 Actualizar noticiero", key="ind_refresh", use_container_width=True):
+    if st.button("🔄 Actualizar", key="ind_refresh", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
@@ -578,28 +565,74 @@ else:
 
 st.caption(f"Mostrando noticias del **{fecha_desde}** al **{fecha_hasta}**")
 
-grupos_list = list(GRUPOS_INDUSTRIA.keys())
-tabs = st.tabs([
-    f"{'🔴' if g=='Urgente' else '🟢' if g=='Tendencias' else '🔵' if g=='Empresas' else '🟡' if g=='Insumos' else '🟣'} {g}"
-    for g in grupos_list
-])
+# ── Nacionales ────────────────────────────────────────────────────────────────
+st.markdown(
+    "<div style='margin:16px 0 8px 0;'>"
+    "<span style='font-size:16px;font-weight:800;color:#1B3A5C;'>🇲🇽 Nacionales</span>"
+    "</div>",
+    unsafe_allow_html=True,
+)
 
-for tab, grupo in zip(tabs, grupos_list):
+nac_grupos = list(GRUPOS_NACIONAL.keys())
+nac_icons  = {"Regulación": "⚖️", "Energía": "⚡", "Infraestructura": "🏗️",
+              "Industria": "🏭", "Economía": "📊"}
+tabs_nac = st.tabs([f"{nac_icons.get(g,'')} {g}" for g in nac_grupos])
+
+for tab, grupo in zip(tabs_nac, nac_grupos):
     with tab:
         noticias_raw = _noticias_grupo(grupo, 20)
         noticias_g   = _filtrar_por_fecha(noticias_raw, fecha_desde, fecha_hasta)
         if not noticias_g:
             html_tab = (
-                f"<div style='color:#9CA3AF;padding:24px 0;text-align:center;"
-                f"font-size:13px;'>Sin noticias para <b>{grupo}</b> "
-                f"en el rango seleccionado.</div>"
+                f"<div style='color:#9CA3AF;padding:24px 0;text-align:center;font-size:13px;'>"
+                f"Sin noticias para <b>{grupo}</b> en el rango seleccionado.</div>"
             )
         else:
             caption = (
                 f"<div style='font-size:11px;color:#6B7280;margin-bottom:10px;'>"
                 f"{len(noticias_g)} artículo(s) en el período</div>"
             )
-            cards = "".join(f"<div>{_render_news_card(n, grupo)}</div>" for n in noticias_g)
+            cards = "".join(
+                f"<div>{_render_news_card(n, grupo, GRUPO_STYLE_NACIONAL)}</div>"
+                for n in noticias_g
+            )
+            html_tab = (
+                caption
+                + f"<div style='display:grid;grid-template-columns:repeat(2,1fr);gap:12px;'>{cards}</div>"
+            )
+        st.markdown(html_tab, unsafe_allow_html=True)
+
+# ── Internacionales ───────────────────────────────────────────────────────────
+st.markdown(
+    "<div style='margin:20px 0 8px 0;'>"
+    "<span style='font-size:16px;font-weight:800;color:#1B3A5C;'>🌐 Internacionales</span>"
+    "</div>",
+    unsafe_allow_html=True,
+)
+
+int_grupos = list(GRUPOS_INTERNACIONAL.keys())
+int_icons  = {"Mercado Global": "🌍", "Materias Primas": "⛏️",
+              "Empresas": "🏢", "Comercio": "🚢"}
+tabs_int = st.tabs([f"{int_icons.get(g,'')} {g}" for g in int_grupos])
+
+for tab, grupo in zip(tabs_int, int_grupos):
+    with tab:
+        noticias_raw = _noticias_grupo(grupo, 20)
+        noticias_g   = _filtrar_por_fecha(noticias_raw, fecha_desde, fecha_hasta)
+        if not noticias_g:
+            html_tab = (
+                f"<div style='color:#9CA3AF;padding:24px 0;text-align:center;font-size:13px;'>"
+                f"Sin noticias para <b>{grupo}</b> en el rango seleccionado.</div>"
+            )
+        else:
+            caption = (
+                f"<div style='font-size:11px;color:#6B7280;margin-bottom:10px;'>"
+                f"{len(noticias_g)} artículo(s) en el período</div>"
+            )
+            cards = "".join(
+                f"<div>{_render_news_card(n, grupo, GRUPO_STYLE_INTERNACIONAL)}</div>"
+                for n in noticias_g
+            )
             html_tab = (
                 caption
                 + f"<div style='display:grid;grid-template-columns:repeat(2,1fr);gap:12px;'>{cards}</div>"
@@ -610,12 +643,8 @@ st.divider()
 
 # ════════════════════════════════════════════════════════════════════════════
 # SECCIÓN C — CHAT SOBRE LA INDUSTRIA
-# DOM: 1 st.empty() + st.chat_input + st.button — sin st.chat_message en loop
 # ════════════════════════════════════════════════════════════════════════════
-seccion_titulo(
-    "💬 Chat con el Analista Siderúrgico",
-    "Haz preguntas sobre tendencias, precios, empresas o riesgos del sector acero"
-)
+seccion_titulo("💬 Chat con el Analista Siderúrgico")
 
 CHAT_KEY_IND = "chat_industria_msgs"
 if CHAT_KEY_IND not in st.session_state:

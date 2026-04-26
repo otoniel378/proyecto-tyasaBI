@@ -365,3 +365,123 @@ def buscar_noticias_industria(grupo: str = "Urgente", max_resultados: int = 12) 
             final.append(item)
     final.sort(key=lambda x: x.get("fecha_pub", "") or "", reverse=True)
     return final[:max_resultados]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# NOTICIAS NACIONALES — 5 categorías siderúrgicas México
+# ════════════════════════════════════════════════════════════════════════════
+
+GRUPOS_NACIONAL: dict[str, list[str]] = {
+    "Regulación": [
+        "aranceles acero importaciones México regulación comercio",
+        "dumping antidumping investigación acero SECOFI cuota compensatoria",
+        "T-MEC reglas origen acero México EE.UU. Canadá",
+        "Sección 232 acero México exportaciones aranceles Trump",
+        "comercio exterior acero política arancelaria SE México",
+    ],
+    "Energía": [
+        "CFE tarifas industriales electricidad México costo manufactura",
+        "gas natural precio México CENAGAS industria",
+        "PEMEX producción exploración petróleo gas inversión",
+        "electricidad industrial tarifa media alta tensión México",
+        "reforma energética CFE gas natural privados",
+    ],
+    "Infraestructura": [
+        "obra pública construcción México inversión gobierno 2025",
+        "vivienda construcción INFONAVIT demanda México",
+        "tren transporte infraestructura México presupuesto",
+        "puertos carreteras inversión pública México acero",
+        "acero varilla construcción vivienda demanda México",
+    ],
+    "Industria": [
+        "nearshoring México inversión manufactura parques industriales",
+        "manufactura México producción industrial crecimiento IGAE",
+        "automotriz armadoras acero México producción exportación",
+        "inversión extranjera directa México sector industrial",
+        "PYMES manufactura metalmecánica México acero",
+    ],
+    "Economía": [
+        "PIB México crecimiento sector industrial manufacturero INEGI",
+        "inflación México INPC manufactura costos industria",
+        "tipo de cambio peso dólar exportaciones industria México",
+        "Banxico tasa interés crédito manufactura empresa",
+        "IGAE actividad económica México industria mensual",
+    ],
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# NOTICIAS INTERNACIONALES — 4 categorías mercado global
+# ════════════════════════════════════════════════════════════════════════════
+
+GRUPOS_INTERNACIONAL: dict[str, list[str]] = {
+    "Mercado Global": [
+        "HRC hot rolled coil steel price market global",
+        "steel price market outlook demand supply global",
+        "worldsteel crude steel production global report",
+        "acero precio laminado caliente mercado mundial tendencias",
+        "steel scrap EAF market price USA",
+    ],
+    "Materias Primas": [
+        "iron ore mineral hierro precio tonelada Vale BHP",
+        "scrap ferroso chatarra precio EAF acero mercado",
+        "coking coal carbón coquizable precio siderurgia",
+        "DRI HBI hierro reducción directa precio mercado",
+        "zinc LME precio galvanizado acero recubrimiento",
+    ],
+    "Empresas": [
+        "Ternium ArcelorMittal producción resultados trimestre acero",
+        "China Baosteel Shagang exportaciones acero sobrecapacidad",
+        "POSCO Nippon Steel Hyundai Steel producción global",
+        "Nucor Cleveland-Cliffs US Steel resultados acero EAF",
+        "alacero CANACERO worldsteel reporte estadística acero",
+    ],
+    "Comercio": [
+        "China steel overcapacity exports dumping global market",
+        "steel tariffs Section 232 trade war aranceles acero",
+        "anti-dumping steel trade EU USA investigation",
+        "OCTG tubería acero importaciones mercado global",
+        "steel trade restrictions safeguards global protectionism",
+    ],
+}
+
+# Paletas para los nuevos grupos
+GRUPO_STYLE_NACIONAL: dict[str, tuple[str, str]] = {
+    "Regulación":    ("#7C3AED", "#EDE9FE"),
+    "Energía":       ("#D97706", "#FEF3C7"),
+    "Infraestructura": ("#0F766E", "#CCFBF1"),
+    "Industria":     ("#2563EB", "#DBEAFE"),
+    "Economía":      ("#059669", "#D1FAE5"),
+}
+
+GRUPO_STYLE_INTERNACIONAL: dict[str, tuple[str, str]] = {
+    "Mercado Global":   ("#DC2626", "#FEE2E2"),
+    "Materias Primas":  ("#D97706", "#FEF3C7"),
+    "Empresas":         ("#1B3A5C", "#E8EFF6"),
+    "Comercio":         ("#4338CA", "#E0E7FF"),
+}
+
+
+def buscar_noticias_sector(grupo: str, max_resultados: int = 12) -> list[dict]:
+    """
+    Busca noticias para cualquier grupo de GRUPOS_NACIONAL o GRUPOS_INTERNACIONAL.
+    Fallback a GRUPOS_INDUSTRIA para compatibilidad.
+    """
+    all_groups = {**GRUPOS_NACIONAL, **GRUPOS_INTERNACIONAL, **GRUPOS_INDUSTRIA}
+    queries = all_groups.get(grupo)
+    if not queries:
+        queries = [grupo]
+    todos: list[dict] = []
+    for q in queries[:3]:
+        res = _buscar_google_news(q, max_resultados=5)
+        for r in res:
+            r["grupo"] = grupo
+        todos.extend(res)
+    seen: set[str] = set()
+    final: list[dict] = []
+    for item in todos:
+        url = item.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            final.append(item)
+    final.sort(key=lambda x: x.get("fecha_pub", "") or "", reverse=True)
+    return final[:max_resultados]

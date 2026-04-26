@@ -30,51 +30,85 @@ _MESES = {
 _OFFICIAL_KW = {"presidencia", "gobierno", "sheinbaum", "claudia", "gob.mx"}
 
 # ── System prompt ─────────────────────────────────────────────────────────────
-_SYSTEM = (
-    "Eres un analista senior de inteligencia de negocios especializado en la "
-    "industria siderúrgica en México. Analizas conferencias de prensa presidencial "
-    "y extraes únicamente la información que puede impactar a la industria del acero. "
-    "Responde siempre con JSON válido, sin bloques de markdown."
-)
+_SYSTEM = """\
+Eres el analista senior de inteligencia comercial de TYASA, empresa siderúrgica \
+mexicana que opera hornos de arco eléctrico (EAF).
+
+PORTAFOLIO TYASA:
+- Tubería OCTG (API 5CT): casing y tubing para PEMEX y operadoras privadas
+- Tubería mecánica y estructural (HSS/RHS): manufactura, maquinaria, construcción metálica
+- Perfiles estructurales: ángulos, canales, vigas IPR para construcción e industria
+- SBQ (Special Bar Quality): barras de calidad especial para autopartes y maquinaria
+- Lámina negra (HRC/CRC): manufactura general, automotriz, línea blanca
+- Lámina galvanizada y recubiertos: construcción, línea blanca, automotriz
+
+CLIENTES CLAVE: PEMEX y operadoras privadas de petróleo y gas, armadoras y Tier-1 \
+automotriz, constructoras y distribuidores de acero, manufactura de maquinaria y equipo.
+
+Tu rol es analizar la conferencia mañanera y extraer SOLO lo que impacta en ventas, \
+costos, demanda o regulación de TYASA. Responde ÚNICAMENTE con JSON válido, sin \
+markdown ni texto fuera del JSON.\
+"""
 
 _PROMPT_TEMPLATE = """\
-Analiza la siguiente transcripción de la conferencia mañanera de la presidenta \
-Claudia Sheinbaum del {fecha}.
+Analiza esta transcripción de la mañanera del {fecha}.
 
-IGNORA completamente: política partidista, seguridad pública, programas sociales \
-sin impacto industrial, opiniones sin implicaciones económicas.
+REGLA: IGNORA política partidista, seguridad pública, programas sociales sin impacto \
+económico, temas sin conexión con industria, manufactura, energía o comercio.
 
-EXTRAE SOLO información sobre:
-- Regulación: aranceles, comercio exterior, antidumping, T-MEC
-- Energía: electricidad, gas, CFE, costos energéticos, proyectos
-- Infraestructura: obra pública, construcción, vivienda, trenes, puertos
-- Industria: inversión, nearshoring, manufactura, PYMES, parques industriales
-- Economía: PIB industrial, inflación, tipo de cambio, crédito productivo
+EXTRAE y CONECTA cada tema con TYASA usando este mapa:
+
+ENERGÍA:
+- CFE/electricidad → costo directo del EAF (horno electro-intensivo, ~40% del costo)
+- Gas natural/CENAGAS → preheating, hornos de tratamiento térmico
+- PEMEX proyectos/presupuesto → demanda de Tubería OCTG (API 5CT)
+- Tarifas CFE → margen de contribución en todos los productos
+
+REGULACIÓN Y COMERCIO:
+- Aranceles a importaciones → protección vs. acero chino/global en lámina, perfiles, tubería
+- T-MEC / reglas de origen → nuevas plantas automotrices = demanda SBQ y Lámina CRC
+- Antidumping / cuotas compensatorias → protección tubería OCTG, lámina galvanizada, perfiles
+- Tipo de cambio peso/dólar → costo insumos importados vs. precios de venta en pesos
+
+DEMANDA E INFRAESTRUCTURA:
+- Construcción / vivienda → Perfiles estructurales, ángulos, canales, tubería estructural
+- Obra pública (trenes, puertos, carreteras, presas) → Placa, perfiles, tubería estructural
+- Inversión industrial / nearshoring / parques → Tubería mecánica, estructural, perfiles
+- Automotriz / maquinaria / herramientas → SBQ, Lámina CRC, Tubería mecánica
+
+MACROECONOMÍA:
+- PIB / actividad industrial → demanda general; correlación directa con volumen TYASA
+- Inflación / tasas Banxico → costos financieros y poder de compra de clientes distribuidores
+- Devaluación peso → encarece chatarra/DRI importada pero protege precio local en pesos
 
 Responde con este JSON exacto (sin markdown):
 
 {{
   "tiene_contenido_relevante": true,
   "resumen_ejecutivo": [
-    "Punto clave 1 (máx 25 palabras)",
-    "Punto clave 2 (máx 25 palabras)"
+    "Punto 1 conciso, máx 80 palabras",
+    "Punto 2 conciso, máx 80 palabras",
+    "Punto 3 si aplica",
+    "Punto 4 si aplica",
+    "Punto 5 si aplica"
   ],
   "analisis_impacto": [
     {{
-      "punto": "Descripción del tema en 10-15 palabras",
-      "tipo": "Regulación | Energía | Demanda | Riesgo | Oportunidad",
+      "punto": "Título del tema en 10-15 palabras",
+      "tipo": "Regulación | Energía | Demanda | Riesgo | Oportunidad | Macroeconomía",
       "impacto": "Alto | Medio | Bajo",
       "direccion": "Positivo | Negativo | Neutral",
-      "areas_afectadas": ["SBQ", "Aceros Planos", "Aceros Largos"],
-      "explicacion": "2-3 oraciones sobre por qué impacta al sector acero."
+      "productos_afectados": ["Tubería OCTG", "Tubería Mecánica", "Perfiles", "SBQ", "Lámina Negra", "Galvanizado"],
+      "areas_afectadas": ["SBQ", "Aceros Planos", "Aceros Largos", "Energía/Costos", "Comercial"],
+      "explicacion": "2-3 oraciones específicas: qué ocurrió, por qué impacta a TYASA y magnitud estimada."
     }}
   ],
   "alertas_criticas": [],
-  "insight_estrategico": "2-3 oraciones: implicaciones para precios, costos o demanda en México.",
-  "recomendacion": "Una oración con acción concreta para empresa siderúrgica mexicana."
+  "insight_estrategico": "2-3 oraciones con implicaciones concretas para precios, costos o demanda de TYASA en el corto plazo.",
+  "recomendacion": "Empieza con verbo de acción en segunda persona (Evalúa / Considera / Revisa / Acelera / Prioriza / Asegura). Acción específica y concreta dirigida a TYASA."
 }}
 
-Si NO hay contenido relevante responde:
+Si NO hay contenido relevante:
 {{"tiene_contenido_relevante": false, "resumen_ejecutivo": [], \
 "analisis_impacto": [], "alertas_criticas": [], \
 "insight_estrategico": "", "recomendacion": ""}}

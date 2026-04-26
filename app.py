@@ -44,7 +44,7 @@ if os.path.exists(css_path):
 hub = st.Page("pages/hub.py", title="Inicio", icon="🏠", default=True)
 
 # ── Aceros Planos — Negros (COMPLETADO) ──────────────────────────────────
-apn_resumen  = st.Page("pages/ap_negros/01_resumen.py",          title="Resumen Ejecutivo",     icon="📊")
+apn_resumen  = st.Page("pages/ap_negros/01_resumen.py",          title="Resumen Ejecutivo",     icon="📊", url_path="apn_resumen")
 apn_seg      = st.Page("pages/ap_negros/02_segmentacion.py",      title="Segmentacion Clientes", icon="👥")
 apn_series   = st.Page("pages/ap_negros/03_series_tiempo.py",     title="Series de Tiempo",      icon="📈")
 apn_forecast = st.Page("pages/ap_negros/04_forecasting.py",       title="Forecasting",           icon="🔮")
@@ -57,7 +57,7 @@ apg_soon = st.Page("pages/ap_galvanizados/coming_soon.py", title="Aceros Galvani
 apf_soon = st.Page("pages/ap_formados/coming_soon.py", title="Aceros Formados", icon="🔧", url_path="ap_formados")
 
 # ── Aceros Largos (COMPLETADO) ──────────────────────────────────────────
-al_resumen    = st.Page("pages/aceros_largos/01_resumen.py",        title="Resumen Ejecutivo",     icon="📊")
+al_resumen    = st.Page("pages/aceros_largos/01_resumen.py",        title="Resumen Ejecutivo",     icon="📊", url_path="al_resumen")
 al_macro      = st.Page("pages/aceros_largos/02_macroeconomia.py",  title="Macroeconomía",         icon="🏦")  
 al_mercado    = st.Page("pages/aceros_largos/03_mercado.py",        title="Mercado y Costos",      icon="💹")
 al_operaciones = st.Page("pages/aceros_largos/04_operaciones.py",   title="Operaciones",           icon="⚙️")
