@@ -293,16 +293,16 @@ if seccion == "aceros_planos" and subseccion == "negros":
 # ---------------------------------------------------------------------------
 def cargar_pagina(modulo):
     try:
-        mod = __import__(modulo, fromlist=[''])
-        if hasattr(mod, 'main'):
-            mod.main()
-        elif hasattr(mod, 'run'):
-            mod.run()
+        file_path = os.path.join(_root, modulo.replace(".", os.sep) + ".py")
+        if os.path.exists(file_path):
+            ns = {"__name__": "__main__", "__file__": file_path}
+            exec(open(file_path, encoding="utf-8").read(), ns)
         else:
-            st.warning(f"Módulo {modulo} no tiene función main()")
+            st.error(f"Archivo no encontrado: {file_path}")
+            renderizar_hub()
     except Exception as e:
         st.error(f"Error cargando {modulo}: {e}")
-        import pages.hub as m; renderizar_hub()
+        renderizar_hub()
 
 # ---------------------------------------------------------------------------
 # Función para renderizar hub inline
