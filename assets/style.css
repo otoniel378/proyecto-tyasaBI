@@ -1,135 +1,70 @@
 /* ============================================================
-   style.css — TYASA BI · Tema ejecutivo claro (Power BI light)
-   Fondo: #F3F2F1 | Superficie: #FFFFFF | Acento: #D83B01
+   style.css — Estilos globales TYASA BI
+   Paleta: azul oscuro #1B3A5C | gris acero | blanco
    ============================================================ */
 
-/* ── Tipografía global ──────────────────────────────────────── */
+/* Tipografia global */
 html, body, [class*="css"] {
-    font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
-    color: #252423;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: #1F2937;
 }
 
-/* ── Fondo principal ────────────────────────────────────────── */
-.stApp {
-    background-color: #F3F2F1;
-}
-
-[data-testid="stAppViewContainer"] {
-    background-color: #F3F2F1;
-}
-
-[data-testid="stMain"] {
-    background-color: #F3F2F1;
-}
-
-.block-container {
-    padding-top: 1.5rem;
-    padding-bottom: 2rem;
-    background-color: #F3F2F1;
-}
-
-/* ── Sidebar ────────────────────────────────────────────────── */
+/* Sidebar */
 [data-testid="stSidebar"] {
-    background-color: #FFFFFF;
-    border-right: 1px solid #EDEBE9;
+    background-color: #F4F6F9;
+    border-right: 1px solid #E5E7EB;
 }
 
 [data-testid="stSidebar"] .stMarkdown h3,
 [data-testid="stSidebar"] .stMarkdown h4 {
-    color: #0078D4;
+    color: #1B3A5C;
 }
 
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] span,
-[data-testid="stSidebar"] label {
-    color: #605E5C;
-}
-
-[data-testid="stSidebarNav"] a {
-    color: #252423 !important;
-    font-size: 0.9rem;
-}
-
-[data-testid="stSidebarNav"] a:hover {
-    color: #0078D4 !important;
-    background-color: #F3F2F1 !important;
-}
-
-[data-testid="stSidebarNav"] a[aria-selected="true"] {
-    color: #0078D4 !important;
-    background-color: #EFF6FC !important;
-    border-left: 3px solid #D83B01 !important;
-    font-weight: 600;
-}
-
-/* ── Encabezados ────────────────────────────────────────────── */
-h1 { color: #252423; font-weight: 700; }
-h2 { color: #252423; font-weight: 600; }
-h3 { color: #323130; font-weight: 600; }
-h4 { color: #605E5C; font-weight: 600; }
-
-/* ── Texto general ──────────────────────────────────────────── */
-p, span, li {
-    color: #323130;
-}
-
-/* ── Botones primarios ──────────────────────────────────────── */
+/* Botones primarios */
 .stButton > button {
-    background-color: #0078D4;
-    color: #FFFFFF;
-    border: 1px solid #0078D4;
-    border-radius: 4px;
+    background-color: #1B3A5C;
+    color: white;
+    border: none;
+    border-radius: 6px;
     font-weight: 600;
     padding: 8px 20px;
-    transition: all 0.15s;
+    transition: background-color 0.2s;
 }
 
 .stButton > button:hover {
-    background-color: #106EBE;
-    border-color: #106EBE;
-    color: #FFFFFF;
+    background-color: #4A7BA7;
+    color: white;
 }
 
-.stButton > button[kind="secondary"] {
-    background-color: #FFFFFF;
-    color: #0078D4;
-    border: 1px solid #0078D4;
-}
-
-.stButton > button[kind="secondary"]:hover {
-    background-color: #EFF6FC;
-}
-
-/* ── Botón descarga ─────────────────────────────────────────── */
+/* Boton de descarga */
 .stDownloadButton > button {
-    background-color: #FFFFFF;
-    color: #0078D4;
-    border: 1px solid #EDEBE9;
-    border-radius: 4px;
+    background-color: #F4F6F9;
+    color: #1B3A5C;
+    border: 1px solid #1B3A5C;
+    border-radius: 6px;
     font-weight: 600;
     font-size: 0.82rem;
     padding: 6px 14px;
-    transition: all 0.15s;
+    transition: all 0.2s;
 }
 
 .stDownloadButton > button:hover {
-    background-color: #EFF6FC;
-    border-color: #0078D4;
+    background-color: #1B3A5C;
+    color: white;
 }
 
-/* ── Métricas nativas Streamlit ─────────────────────────────── */
+/* Metricas nativas de Streamlit */
 [data-testid="metric-container"] {
     background-color: #FFFFFF;
-    border: 1px solid #EDEBE9;
-    border-left: 4px solid #0078D4;
-    border-radius: 4px;
+    border: 1px solid #E5E7EB;
+    border-left: 4px solid #1B3A5C;
+    border-radius: 8px;
     padding: 12px 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 [data-testid="metric-container"] [data-testid="stMetricLabel"] {
     font-size: 0.78rem;
-    color: #605E5C;
+    color: #6B7280;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -138,232 +73,50 @@ p, span, li {
 [data-testid="metric-container"] [data-testid="stMetricValue"] {
     font-size: 1.6rem;
     font-weight: 700;
-    color: #252423;
+    color: #1B3A5C;
 }
 
-[data-testid="metric-container"] [data-testid="stMetricDelta"] {
-    font-size: 0.82rem;
-}
-
-/* ── Tabs ───────────────────────────────────────────────────── */
+/* Tabs */
 .stTabs [data-baseweb="tab-list"] {
-    background-color: #F3F2F1;
-    border-bottom: 2px solid #EDEBE9;
-    gap: 2px;
+    border-bottom: 2px solid #1B3A5C;
 }
 
 .stTabs [data-baseweb="tab"] {
-    background-color: transparent;
-    color: #605E5C;
+    color: #6B7280;
     font-weight: 500;
-    border-radius: 4px 4px 0 0;
-    padding: 8px 16px;
-    transition: all 0.12s;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    color: #0078D4;
-    background-color: #FFFFFF;
 }
 
 .stTabs [aria-selected="true"] {
-    color: #252423 !important;
+    color: #1B3A5C !important;
     font-weight: 700;
-    background-color: #FFFFFF !important;
-    border-bottom: 2px solid #D83B01 !important;
+    border-bottom: 2px solid #1B3A5C;
 }
 
-.stTabs [data-baseweb="tab-panel"] {
-    background-color: #F3F2F1;
-    padding-top: 16px;
-}
-
-/* ── Select / Selectbox ─────────────────────────────────────── */
-[data-testid="stSelectbox"] > div > div {
-    background-color: #FFFFFF;
-    border: 1px solid #EDEBE9;
-    color: #252423;
-    border-radius: 4px;
-}
-
-/* ── Inputs de texto ────────────────────────────────────────── */
-[data-testid="stTextInput"] input,
-[data-testid="stTextArea"] textarea,
-[data-testid="stNumberInput"] input {
-    background-color: #FFFFFF;
-    color: #252423;
-    border: 1px solid #EDEBE9;
-    border-radius: 4px;
-}
-
-[data-testid="stTextInput"] input:focus,
-[data-testid="stTextArea"] textarea:focus {
-    border-color: #0078D4;
-    box-shadow: 0 0 0 2px rgba(0,120,212,0.1);
-}
-
-/* ── Date input ─────────────────────────────────────────────── */
-[data-testid="stDateInput"] input {
-    background-color: #FFFFFF;
-    color: #252423;
-    border: 1px solid #EDEBE9;
-    border-radius: 4px;
-}
-
-/* ── Slider ─────────────────────────────────────────────────── */
-[data-testid="stSlider"] [data-baseweb="slider"] [role="slider"] {
-    background-color: #0078D4;
-    border-color: #0078D4;
-}
-
-/* ── Checkbox ───────────────────────────────────────────────── */
-[data-testid="stCheckbox"] label {
-    color: #323130;
-}
-
-/* ── Radio ──────────────────────────────────────────────────── */
-[data-testid="stRadio"] label {
-    color: #323130;
-}
-
-/* ── Dividers ───────────────────────────────────────────────── */
+/* Divisores */
 hr {
-    border-color: #EDEBE9;
+    border-color: #E5E7EB;
     margin: 16px 0;
 }
 
-/* ── Alertas Streamlit ──────────────────────────────────────── */
+/* Alertas */
 .stAlert {
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
-[data-testid="stAlert"][data-baseweb="notification"][kind="info"] {
-    background-color: rgba(0,120,212,0.06);
-    border-color: rgba(0,120,212,0.25);
-    color: #323130;
-}
-
-[data-testid="stAlert"][data-baseweb="notification"][kind="success"] {
-    background-color: rgba(16,124,16,0.06);
-    border-color: rgba(16,124,16,0.25);
-    color: #323130;
-}
-
-[data-testid="stAlert"][data-baseweb="notification"][kind="warning"] {
-    background-color: rgba(210,146,0,0.08);
-    border-color: rgba(210,146,0,0.3);
-    color: #323130;
-}
-
-[data-testid="stAlert"][data-baseweb="notification"][kind="error"] {
-    background-color: rgba(168,0,0,0.06);
-    border-color: rgba(168,0,0,0.25);
-    color: #323130;
-}
-
-/* ── DataFrames ─────────────────────────────────────────────── */
+/* DataFrames */
 [data-testid="stDataFrame"] {
-    border: 1px solid #EDEBE9;
-    border-radius: 4px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
     overflow: hidden;
 }
 
-/* ── Expanders ──────────────────────────────────────────────── */
-[data-testid="stExpander"] {
-    background-color: #FFFFFF;
-    border: 1px solid #EDEBE9;
-    border-radius: 4px;
+/* Quitar padding excesivo en main */
+.block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
 }
 
-[data-testid="stExpander"] summary {
-    color: #323130;
-}
-
-/* ── Spinner ────────────────────────────────────────────────── */
-.stSpinner > div {
-    border-top-color: #0078D4;
-}
-
-/* ── Scrollbars ─────────────────────────────────────────────── */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: #F3F2F1;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #C8C6C4;
-    border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #0078D4;
-}
-
-/* ── Multiselect ────────────────────────────────────────────── */
-[data-testid="stMultiSelect"] [data-baseweb="tag"] {
-    background-color: #EFF6FC;
-    color: #0078D4;
-}
-
-/* ── Caption / small text ───────────────────────────────────── */
-.stCaption, [data-testid="stCaptionContainer"] {
-    color: #605E5C !important;
-}
-
-/* ── Tooltips ───────────────────────────────────────────────── */
-[data-testid="stTooltipIcon"] {
-    color: #605E5C;
-}
-
-/* ── KPI cards custom ───────────────────────────────────────── */
-.kpi-card {
-    background: #FFFFFF;
-    border: 1px solid #EDEBE9;
-    border-left: 4px solid #0078D4;
-    border-radius: 4px;
-    padding: 16px 20px;
-    margin-bottom: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-
-.kpi-card-accent   { border-left-color: #D83B01; }
-.kpi-card-success  { border-left-color: #107C10; }
-.kpi-card-danger   { border-left-color: #A80000; }
-.kpi-card-warning  { border-left-color: #D29200; }
-
-/* ── Section headers ────────────────────────────────────────── */
-.seccion-header {
-    color: #252423;
-    font-size: 1.0rem;
-    font-weight: 700;
-    margin: 20px 0 10px 0;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #0078D4;
-    letter-spacing: 0.01em;
-}
-
-/* ── Badge chips ────────────────────────────────────────────── */
-.badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1.6;
-}
-
-.badge-primary   { background: rgba(0,120,212,0.1);   color: #0078D4; }
-.badge-accent    { background: rgba(216,59,1,0.1);    color: #D83B01; }
-.badge-success   { background: rgba(16,124,16,0.1);   color: #107C10; }
-.badge-warning   { background: rgba(210,146,0,0.12);  color: #D29200; }
-.badge-danger    { background: rgba(168,0,0,0.1);     color: #A80000; }
-.badge-neutral   { background: rgba(96,94,92,0.1);    color: #605E5C; }
-
-/* ── Plotly charts bg ───────────────────────────────────────── */
-.js-plotly-plot .plotly .bg {
-    fill: #FFFFFF !important;
-}
+/* Encabezados */
+h1 { color: #1B3A5C; font-weight: 800; }
+h2 { color: #1B3A5C; font-weight: 700; }
+h3 { color: #1B3A5C; font-weight: 600; }

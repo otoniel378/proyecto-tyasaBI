@@ -5,6 +5,8 @@ pages/aceros_largos/01_resumen.py — Resumen Ejecutivo Aceros Largos
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
+from core.components.kpi_cards import render_stat_card
+from core.components.charts import format_chart_layout
 from aceros_largos.loaders import load_executive_summary, load_ticker_data, get_last_update, get_data_sources
 
 # ---------------------------------------------------------------------------

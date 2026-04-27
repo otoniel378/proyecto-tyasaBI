@@ -1,170 +1,128 @@
 """
-hub.py — Landing page TYASA BI — Tema ejecutivo oscuro.
+hub.py — Pagina de bienvenida y vision general del proyecto TYASA BI.
+Muestra el estado de cada area y sus modulos.
 """
-import os, sys
+
+import os
+import sys
 import streamlit as st
 
 _root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from config import COLORS, APP_NAME, APP_SUBTITLE
+from config import COLORS, APP_NAME, APP_SUBTITLE, AREAS
 
-# ── Encabezado ────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Encabezado
+# ---------------------------------------------------------------------------
+col_icon, col_title = st.columns([1, 6])
+with col_icon:
+    st.markdown("<div style='font-size:3rem;text-align:center;padding-top:8px;'>🏭</div>", unsafe_allow_html=True)
+with col_title:
+    st.markdown(
+        f"""
+        <h1 style='color:{COLORS["primary"]};margin-bottom:0;'>{APP_NAME}</h1>
+        <p style='color:{COLORS["neutral"]};font-size:1.05rem;margin-top:4px;'>{APP_SUBTITLE}</p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+st.divider()
+
 st.markdown(
-    f"""
-    <div style='padding:32px 0 24px 0;'>
-        <div style='font-size:2.8rem;font-weight:800;color:{COLORS["text"]};letter-spacing:-0.02em;
-                    line-height:1.1;'>
-            🏭 {APP_NAME}
-        </div>
-        <div style='color:{COLORS["text_light"]};font-size:1.05rem;margin-top:6px;'>
-            {APP_SUBTITLE}
-        </div>
-    </div>
-    """,
+    f"<h3 style='color:{COLORS['primary']};'>Estado del Proyecto</h3>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<p style='color:#6B7280;'>Selecciona un modulo en el menu lateral para comenzar el analisis.</p>",
     unsafe_allow_html=True,
 )
 
-st.divider()
+# ---------------------------------------------------------------------------
+# Tarjetas por area
+# ---------------------------------------------------------------------------
 
-# ── Grid de áreas ─────────────────────────────────────────────────────────────
-def _area_card(
-    titulo: str,
-    icono: str,
-    descripcion: str,
-    modulos: list[str],
-    status: str = "activo",
-    accent: str | None = None,
-) -> str:
-    STATUS_STYLES = {
-        "activo":        (COLORS["success"], "rgba(16,124,16,0.08)",   "✅ Activo"),
-        "en_desarrollo": (COLORS["warning"], "rgba(210,146,0,0.10)",   "🚧 En desarrollo"),
-        "proximo":       (COLORS["neutral"], "rgba(96,94,92,0.08)",    "🔜 Próximo"),
-    }
-    sc, sb, st_label = STATUS_STYLES.get(status, STATUS_STYLES["proximo"])
-    border_top = accent or sc
+STATUS_BADGE = {
+    "activo":        ("<span style='background:#E8F5E9;color:#2E7D32;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;'>✅ Activo</span>", "#2E7D32"),
+    "en_desarrollo": ("<span style='background:#FFF3E0;color:#F57C00;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;'>🚧 En Desarrollo</span>", "#F57C00"),
+    "proximo":       ("<span style='background:#F3F4F6;color:#6B7280;padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:600;'>🔜 Proximo</span>", "#6B7280"),
+}
 
-    mods_html = "".join(
-        f"<li style='color:{COLORS['text_light']};font-size:0.8rem;margin:3px 0;'>{m}</li>"
-        for m in modulos
-    ) if modulos else (
-        f"<li style='color:{COLORS['text_light']};font-size:0.8rem;font-style:italic;'>En construcción...</li>"
-    )
+# ── Aceros Planos ────────────────────────────────────────────────────────────
+st.markdown(f"<h4 style='color:{COLORS['primary']};margin-top:24px;'>🔩 Aceros Planos</h4>", unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3)
 
-    return f"""
-    <div style='
-        background:{COLORS["surface"]};
-        border:1px solid {COLORS["border"]};
-        border-top:4px solid {border_top};
-        border-radius:10px;
-        padding:20px 18px;
-        min-height:220px;
-        display:flex;
-        flex-direction:column;
-    '>
-        <div style='font-size:1.8rem;margin-bottom:6px;'>{icono}</div>
-        <div style='font-size:1.1rem;font-weight:700;color:{COLORS["text"]};margin-bottom:6px;'>{titulo}</div>
-        <span style='display:inline-block;background:{sb};color:{sc};padding:2px 10px;
-                     border-radius:12px;font-size:0.72rem;font-weight:600;margin-bottom:10px;'>
-            {st_label}
-        </span>
-        <p style='color:{COLORS["text_light"]};font-size:0.8rem;margin-bottom:8px;'>{descripcion}</p>
-        <ul style='margin:0;padding-left:16px;flex:1;'>
-            {mods_html}
-        </ul>
-    </div>
-    """
-
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.markdown(
-        _area_card(
-            "Mercado Global", "🌐",
-            "Variables macroeconómicas, quiebres estructurales, noticias IA, mañanera.",
-            ["Mercado Global integrado", "Monitor de Quiebres", "Variables 31 series", "Monitor Siderúrgico"],
-            "activo", COLORS["primary"],
-        ),
-        unsafe_allow_html=True,
-    )
-
-with col2:
-    st.markdown(
-        _area_card(
-            "Aceros Planos", "⚡",
-            "CASTRIP: alertas, analytics comerciales e inteligencia de clientes.",
-            ["00 Alertas", "01–05 Analytics", "06 Clientes IA", "07 Condición Mercado", "08 Contexto"],
-            "activo", COLORS["accent"],
-        ),
-        unsafe_allow_html=True,
-    )
-
-with col3:
-    st.markdown(
-        _area_card(
-            "Aceros Largos", "📏",
-            "Perfiles estructurales, varilla, ángulos y canales: resumen, macro, mercado.",
-            ["Resumen Ejecutivo", "Macroeconomía", "Mercado y Costos", "Operaciones", "Calidad"],
-            "activo", COLORS["success"],
-        ),
-        unsafe_allow_html=True,
-    )
-
-with col4:
-    st.markdown(
-        _area_card(
-            "Aceros SBQ", "🔑",
-            "Special Bar Quality para autopartes y maquinaria.",
-            [],
-            "proximo", COLORS["neutral"],
-        ),
-        unsafe_allow_html=True,
-    )
-
-st.divider()
-
-# ── KPIs de estado rápido ─────────────────────────────────────────────────────
-col_k1, col_k2, col_k3, col_k4 = st.columns(4)
-
-_kpis = [
-    (col_k1, "🌐",  "Mercado Global", "Activo",   COLORS["primary"]),
-    (col_k2, "⚡",  "Aceros Planos",  "CASTRIP", COLORS["accent"]),
-    (col_k3, "📏",  "Aceros Largos",  "5 módulos", COLORS["success"]),
-    (col_k4, "🔑",  "SBQ",            "Próximo",   COLORS["neutral"]),
+subsecciones_ap = [
+    ("negros",       "⚫ Aceros Negros",      "activo",        ["Resumen Ejecutivo", "Segmentacion Clientes", "Series de Tiempo", "Forecasting", "Mix de Productos"]),
+    ("galvanizados", "✨ Aceros Galvanizados", "en_desarrollo", []),
+    ("formados",     "🔧 Aceros Formados",    "en_desarrollo", []),
 ]
 
-for col, icon, label, val, color in _kpis:
+for col, (key, nombre, status, modulos) in zip([col1, col2, col3], subsecciones_ap):
+    badge, border_color = STATUS_BADGE[status]
+    modulos_html = "".join(
+        f"<li style='font-size:0.82rem;color:{COLORS['text_light']};margin:2px 0;'>{m}</li>"
+        for m in modulos
+    ) if modulos else f"<li style='font-size:0.82rem;color:{COLORS['text_light']};font-style:italic;'>En construccion...</li>"
+
     with col:
         st.markdown(
             f"""
             <div style='
                 background:{COLORS["surface"]};
-                border:1px solid {COLORS["border"]};
-                border-left:4px solid {color};
+                border:1px solid #E5E7EB;
+                border-top:4px solid {border_color};
                 border-radius:8px;
-                padding:14px 16px;
-                text-align:center;
+                padding:18px 16px;
+                min-height:200px;
             '>
-                <div style='font-size:1.5rem;'>{icon}</div>
-                <div style='color:{COLORS["text_light"]};font-size:0.72rem;font-weight:600;
-                            text-transform:uppercase;letter-spacing:0.05em;margin:4px 0 2px 0;'>
-                    {label}
-                </div>
-                <div style='color:{color};font-size:1rem;font-weight:700;'>{val}</div>
+                <div style='font-size:1.1rem;font-weight:700;color:{COLORS["primary"]};margin-bottom:6px;'>{nombre}</div>
+                {badge}
+                <ul style='margin-top:12px;padding-left:18px;'>
+                    {modulos_html}
+                </ul>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-# ── Footer ────────────────────────────────────────────────────────────────────
+# ── Otras areas ──────────────────────────────────────────────────────────────
+st.markdown(f"<h4 style='color:{COLORS['primary']};margin-top:28px;'>Otras Areas</h4>", unsafe_allow_html=True)
+col4, col5, _ = st.columns(3)
+
+otras = [
+    (col4, "📏 Aceros Largos",  "🔜 Proximo — Pendiente de desarrollo por el equipo responsable."),
+    (col5, "🔑 Aceros SBQ",     "🔜 Proximo — Pendiente de desarrollo por el equipo responsable."),
+]
+
+for col, titulo, desc in otras:
+    with col:
+        st.markdown(
+            f"""
+            <div style='
+                background:{COLORS["background"]};
+                border:1px dashed #D1D5DB;
+                border-radius:8px;
+                padding:18px 16px;
+                min-height:120px;
+            '>
+                <div style='font-size:1.1rem;font-weight:700;color:{COLORS["neutral"]};margin-bottom:8px;'>{titulo}</div>
+                <p style='font-size:0.83rem;color:{COLORS["text_light"]};'>{desc}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+# ---------------------------------------------------------------------------
+# Footer
+# ---------------------------------------------------------------------------
 st.divider()
 st.markdown(
     f"""
-    <div style='text-align:center;color:{COLORS["text_light"]};font-size:0.78rem;padding:8px 0;'>
-        TYASA BI — Plataforma de Inteligencia Comercial
-        &nbsp;·&nbsp; Mercado Global · CASTRIP · Aceros Largos · SBQ
+    <div style='text-align:center;color:{COLORS["text_light"]};font-size:0.82rem;'>
+        TYASA BI — Plataforma de Inteligencia Comercial Multi-Area
+        &nbsp;|&nbsp; Aceros Planos · Aceros Largos · Aceros SBQ
     </div>
     """,
     unsafe_allow_html=True,
