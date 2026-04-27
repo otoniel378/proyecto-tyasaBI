@@ -7,16 +7,18 @@ GCP Project: project-d0cf2519-d089-47d3-930
 Dataset BQ: tyasa_bi
 
 ## Estructura del repo
-app.py                            ← Hub principal, navegación st.navigation()
-config.py                         ← Colores, parámetros, rutas, áreas
+app.py                            ← Hub principal, navegación 4 áreas (Mercado Global · CASTRIP · Aceros Largos · SBQ)
+config.py                         ← Colores dark theme, parámetros, rutas, áreas
+assets/style.css                  ← CSS tema ejecutivo oscuro (bg #0F1923, surface #1A2535, accent #E05C2D)
 core/
   db_connector.py                 ← Cliente BigQuery singleton
   validators.py                   ← Validaciones de DataFrames
   components/
-    charts.py                     ← 8 tipos de gráficos Plotly (paleta TYASA)
+    charts.py                     ← 12 tipos de gráficos Plotly (paleta dark TYASA)
     filters.py                    ← Filtros sidebar
-    kpi_cards.py                  ← Tarjetas KPI ejecutivas
+    kpi_cards.py                  ← KPI: card / compact / sparkline / gauge / badge
     tables.py                     ← Tablas exportables a Excel
+    alertas_panel.py              ← render_anomalia_card / render_termometro_mes / render_semaforo_area
 aceros_planos/
   negros/                         ← COMPLETADO (5 módulos)
     loaders.py                    ← 12 funciones con @st.cache_data(ttl=600)
@@ -26,27 +28,43 @@ aceros_planos/
       series_tiempo.py            ← Variación MoM, volatilidad, heatmap
       forecasting.py              ← ETS | SARIMA | XGBoost | Naive | Auto
       mix_productos.py            ← Co-ocurrencia, cross-sell
+  castrip/                        ← COMPLETADO (9 módulos, loaders AREA_FILTER=CASTRIP)
+    loaders.py                    ← Misma estructura que negros/, AREA_FILTER="CASTRIP"
   galvanizados/                   ← EN DESARROLLO
   formados/                       ← EN DESARROLLO
-aceros_largos/                    ← PRÓXIMO (otro equipo)
-aceros_sbq/                       ← PRÓXIMO (otro equipo)
+aceros_largos/                    ← COMPLETADO (5 páginas, contenido sin cambios)
+aceros_sbq/                       ← PRÓXIMO
+analytics/                        ← Módulos analíticos transversales
+  alertas.py                      ← detectar_clientes_en_fuga / enfriamiento / anomalias / proyeccion_mes
+  clientes.py                     ← frecuencia_compra / proximo_pedido / estacionalidad / briefing_visita
+  condicion_mercado.py            ← indice_condicion / ventanas_oportunidad / correlaciones_lag
 mercado_noticias/                 ← COMPLETADO
   loaders.py                      ← Variables, quiebres, noticias desde BQ
+  inegi_loader.py                 ← 10 indicadores INEGI con @st.cache_data(ttl=3600)
   analytics/
     detector.py                   ← Detección quiebres estructurales (Chow test)
-    noticias.py                   ← Google News RSS + NewsAPI (31 variables)
+    noticias.py                   ← Google News RSS + NewsAPI + GRUPOS_NACIONAL/INTERNACIONAL
     ai_analysis.py                ← Análisis IA con Gemini 2.0-flash + caché JSON
+    mananera.py                   ← Análisis mañanera presidencial (yt-dlp + transcripción + Gemini)
 pages/
-  hub.py                          ← Bienvenida con estado del proyecto
-  ap_negros/01-05_*.py            ← 5 páginas completas (~62 KB)
-  ap_galvanizados/coming_soon.py
-  ap_formados/coming_soon.py
-  aceros_largos/coming_soon.py
+  hub.py                          ← Landing page dark theme (4 área cards + KPIs de estado)
   aceros_sbq/coming_soon.py
   mercado/
-    01_monitor.py                 ← Monitor de quiebres + alertas IA (316 líneas)
+    00_mercado_global.py          ← Vista integrada: Quiebres · Variables · INEGI · Siderúrgico · Mañanera
+    01_monitor.py                 ← Monitor de quiebres + alertas IA
     02_variables.py               ← 31 series siderúrgicas históricas
-    03_industria.py               ← Monitor siderúrgico + noticias IA (316 líneas)
+    03_industria.py               ← Monitor siderúrgico + noticias nacionales/internacionales
+  castrip/
+    00_alertas.py                 ← Panel alertas: proyección mes, fuga, anomalías
+    01_resumen.py                 ← Resumen ejecutivo
+    02_segmentacion.py            ← Segmentación ABC, Pareto, HHI
+    03_series_tiempo.py           ← Series temporales + YoY + heatmap
+    04_forecasting.py             ← ETS/SARIMA/XGBoost auto forecast
+    05_mix_productos.py           ← Mix, treemap, co-ocurrencia
+    06_clientes.py                ← Briefing visita, frecuencia, estacionalidad, mix cliente
+    07_condicion_mercado.py       ← Índice condición, ventanas, correlaciones lag
+    08_mercado_contexto.py        ← Noticias + Mañanera + INEGI
+  aceros_largos/01-05_*.py       ← 5 páginas (contenido sin cambios)
 scripts/
   create_market_tables.py         ← Inicialización tablas BQ (one-time)
   update_market_data.py           ← Update diario desde yfinance
@@ -56,20 +74,24 @@ cloud_functions/
 ## Convenciones
 - Naming tablas BQ: bronze_ | silver_ | gold_ + descripción
 - Columnas clave: PESO_TON, CLIENTE, PRODUCTO_LIMPIO, PERIODO, AREA, DIVISION
-- AREA_FILTER por loader: "NEGROS" | "GALVANIZADOS" | "FORMADOS"
-- Paleta: primary=#1B3A5C | secondary=#4A7BA7 | success=#2E7D32 | danger=#C62828
+- AREA_FILTER por loader: "NEGROS" | "GALVANIZADOS" | "FORMADOS" | "CASTRIP"
+- Tema dark: background=#0F1923 | surface=#1A2535 | surface2=#243044 | accent=#E05C2D | primary=#4A9FD4
 - Todos los loaders usan @st.cache_data(ttl=600)
 - BQ client usa @st.cache_resource (una sola conexión por sesión)
-- Nuevas páginas siguen el patrón de pages/ap_negros/01_resumen.py
-- Caché IA en cache/ai_summaries/<hash>.json (no repetir llamadas a Gemini)
+- Nuevas páginas CASTRIP importan loaders de aceros_planos/castrip/loaders.py y analytics de aceros_planos/negros/analytics/
+- Caché IA en cache/ai_summaries/<hash>.json | cache/mananera/<fecha>.json (no repetir llamadas a Gemini)
+- Componentes DOM-estable: usar st.empty() + HTML strings, no componentes Streamlit condicionales
+- NO poner textos instruccionales/descriptivos en subtítulos, captions ni headers de la UI
+- INEGI loader con @st.cache_data(ttl=3600): máximo 10 indicadores por request
 
 ## Estado actual
-- Aceros Planos Negros:     ✅ COMPLETADO (5 módulos, ~62 KB)
-- Mercado Global:           ✅ COMPLETADO (3 páginas, 31 variables, IA)
-- Aceros Planos Galvanizados: 🚧 EN DESARROLLO
-- Aceros Planos Formados:     🚧 EN DESARROLLO
-- Aceros Largos:              🔜 PRÓXIMO (otro equipo)
-- Aceros SBQ:                 🔜 PRÓXIMO (otro equipo)
+- Mercado Global:              ✅ COMPLETADO (vista integrada 5 tabs + 3 páginas legacy)
+- CASTRIP:                     ✅ COMPLETADO (9 módulos 00-08)
+- Aceros Planos Negros:        ✅ COMPLETADO (5 módulos, ~62 KB)
+- Aceros Largos:               ✅ COMPLETADO (5 páginas, solo contenido)
+- Aceros Planos Galvanizados:  🚧 EN DESARROLLO
+- Aceros Planos Formados:      🚧 EN DESARROLLO
+- Aceros SBQ:                  🔜 PRÓXIMO
 
 ## Tablas BigQuery activas
 - silver_ventas_limpias         ← Datos completos de ventas (fuente principal)
@@ -95,7 +117,7 @@ cloud_functions/
 Las notas de cada sesión se guardan en:
 C:\Users\OTONIEL\Desktop\obsidian\sesiones\
 Plantilla: templates/sesion-claude.md
-Última sesión: 2026-04-12 — Sincronización repo → Obsidian
+Última sesión: 2026-04-23 — Rediseño completo dark theme + CASTRIP + analytics
 
 ## Regla de documentación en Obsidian
 Cuando el usuario pida "anota esto en Obsidian" o "actualiza Obsidian" al final de una tarea:

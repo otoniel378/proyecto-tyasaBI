@@ -21,9 +21,10 @@ AREAS = {
         "icono":  "🔩",
         "responsable": "Otoniel",
         "subsecciones": {
-            "negros":       {"nombre": "Aceros Negros",      "status": "activo",       "icono": "⚫"},
+            "castrip":      {"nombre": "CASTRIP",             "status": "activo",       "icono": "⚡"},
+            "negros":       {"nombre": "Aceros Negros",       "status": "activo",       "icono": "⚫"},
             "galvanizados": {"nombre": "Aceros Galvanizados", "status": "en_desarrollo", "icono": "✨"},
-            "formados":     {"nombre": "Aceros Formados",    "status": "en_desarrollo", "icono": "🔧"},
+            "formados":     {"nombre": "Aceros Formados",     "status": "en_desarrollo", "icono": "🔧"},
         },
     },
     "aceros_largos": {
@@ -55,35 +56,37 @@ APP_SUBTITLE = "Plataforma de Inteligencia Comercial"
 APP_ICON     = "🏭"
 
 # ---------------------------------------------------------------------------
-# Paleta de colores corporativa TYASA
+# Paleta de colores — Tema ejecutivo claro (Power BI light)
 # ---------------------------------------------------------------------------
 COLORS = {
-    "primary":    "#1B3A5C",
-    "secondary":  "#4A7BA7",
-    "accent":     "#8BA7BF",
-    "neutral":    "#6B7280",
-    "background": "#F4F6F9",
-    "surface":    "#FFFFFF",
-    "text":       "#1F2937",
-    "text_light": "#6B7280",
-    "success":    "#2E7D32",
-    "warning":    "#F57C00",
-    "danger":     "#C62828",
+    "primary":    "#0078D4",   # Azul Microsoft — acciones, links
+    "secondary":  "#1B3A5C",   # Azul oscuro
+    "accent":     "#D83B01",   # Naranja Power BI
+    "neutral":    "#605E5C",   # Gris texto secundario
+    "background": "#F3F2F1",   # Fondo principal gris cálido
+    "surface":    "#FFFFFF",   # Superficie tarjetas/paneles
+    "surface2":   "#FAF9F8",   # Superficie secundaria
+    "text":       "#252423",   # Texto principal casi negro
+    "text_light": "#605E5C",   # Texto atenuado
+    "success":    "#107C10",   # Verde Microsoft
+    "warning":    "#D29200",   # Amarillo/naranja Microsoft
+    "danger":     "#A80000",   # Rojo Microsoft
+    "border":     "#EDEBE9",   # Borde gris claro
 }
 
 COLOR_SEQUENCE = [
-    "#1B3A5C", "#E05C2D", "#2D8A5C", "#9B59B6",
-    "#D4A017", "#00838F", "#C0392B", "#2980B9",
-    "#27AE60", "#D35400", "#8E44AD", "#16A085",
-    "#F39C12", "#1ABC9C", "#6C3483",
+    "#0078D4", "#D83B01", "#107C10", "#8764B8",
+    "#D29200", "#00B294", "#A80000", "#2B88D8",
+    "#498205", "#CA5010", "#5C2D91", "#004B50",
+    "#FFB900", "#0062AF", "#4B1D52",
 ]
 
 HEATMAP_COLORSCALE = [
-    [0.0,  "#F8FAFC"],
-    [0.15, "#D6E8F5"],
-    [0.40, "#7BAFD4"],
-    [0.70, "#2E6FA3"],
-    [1.0,  "#0D2137"],
+    [0.0,  "#F3F2F1"],
+    [0.20, "#C7E0F4"],
+    [0.45, "#71AFE5"],
+    [0.70, "#0078D4"],
+    [1.0,  "#D83B01"],
 ]
 
 # ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@ from config import COLORS, COLOR_SEQUENCE, HEATMAP_COLORSCALE
 
 _LAYOUT_BASE = dict(
     paper_bgcolor=COLORS["surface"],
-    plot_bgcolor=COLORS["background"],
+    plot_bgcolor=COLORS["surface"],
     font=dict(family="Inter, Arial, sans-serif", color=COLORS["text"], size=12),
     margin=dict(l=40, r=20, t=50, b=40),
     legend=dict(
@@ -22,7 +22,8 @@ _LAYOUT_BASE = dict(
         y=-0.25,
         xanchor="center",
         x=0.5,
-        font=dict(size=11),
+        font=dict(size=11, color=COLORS["text_light"]),
+        bgcolor="rgba(0,0,0,0)",
     ),
 )
 
@@ -55,10 +56,10 @@ def linea_temporal(
         **_LAYOUT_BASE,
         xaxis_title="",
         yaxis_title=y_label,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(font=dict(size=14, color=COLORS["text"]), x=0),
     )
     fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(gridcolor="#E5E7EB")
+    fig.update_yaxes(gridcolor=COLORS["border"])
     return fig
 
 
@@ -83,10 +84,10 @@ def barras_horizontales(
         **_LAYOUT_BASE,
         xaxis_title=x_label,
         yaxis_title="",
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(font=dict(size=14, color=COLORS["text"]), x=0),
         showlegend=False,
     )
-    fig.update_xaxes(showgrid=True, gridcolor="#E5E7EB")
+    fig.update_xaxes(showgrid=True, gridcolor=COLORS["border"])
     fig.update_yaxes(showgrid=False)
     return fig
 
@@ -113,7 +114,7 @@ def donut(
     fig.update_layout(
         **_LAYOUT_BASE,
         showlegend=False,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(font=dict(size=14, color=COLORS["text"]), x=0),
     )
     return fig
 
@@ -133,7 +134,7 @@ def treemap(
     )
     fig.update_layout(
         **_LAYOUT_BASE,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(font=dict(size=14, color=COLORS["text"]), x=0),
     )
     return fig
 
@@ -161,7 +162,7 @@ def heatmap(
     )
     fig.update_layout(
         **_LAYOUT_BASE,
-        title=dict(text=titulo, font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(text=titulo, font=dict(size=14, color=COLORS["text"]), x=0),
         xaxis_title=x_label,
         yaxis_title=y_label,
     )
@@ -205,7 +206,7 @@ def pareto(
     layout = {k: v for k, v in _LAYOUT_BASE.items() if k != "legend"}
     fig.update_layout(
         **layout,
-        title=dict(text=titulo, font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(text=titulo, font=dict(size=14, color=COLORS["text"]), x=0),
         xaxis=dict(title="", tickangle=-40, showgrid=False),
         yaxis=dict(title="Toneladas", gridcolor="#E5E7EB"),
         yaxis2=dict(
@@ -241,7 +242,162 @@ def scatter(
         **_LAYOUT_BASE,
         xaxis_title=x_label or x,
         yaxis_title=y_label or y,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(font=dict(size=14, color=COLORS["text"]), x=0),
+    )
+    return fig
+
+
+def multi_axis_line(
+    df: pd.DataFrame,
+    x: str,
+    y1: str,
+    y2: str,
+    titulo: str = "",
+    y1_label: str = "",
+    y2_label: str = "",
+    color1: str | None = None,
+    color2: str | None = None,
+) -> go.Figure:
+    if df.empty:
+        return _empty_fig(titulo)
+
+    c1 = color1 or COLORS["primary"]
+    c2 = color2 or COLORS["accent"]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df[x], y=df[y1], name=y1_label or y1,
+        line=dict(color=c1, width=2.5),
+        mode="lines", yaxis="y1",
+    ))
+    fig.add_trace(go.Scatter(
+        x=df[x], y=df[y2], name=y2_label or y2,
+        line=dict(color=c2, width=2.5, dash="dot"),
+        mode="lines", yaxis="y2",
+    ))
+    fig.update_layout(
+        **_LAYOUT_BASE,
+        title=dict(text=titulo, font=dict(size=14, color=COLORS["text"]), x=0),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(title=y1_label or y1, gridcolor=COLORS["border"]),
+        yaxis2=dict(
+            title=y2_label or y2, overlaying="y", side="right",
+            showgrid=False,
+        ),
+    )
+    return fig
+
+
+def yoy_comparison(
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    anio_col: str = "ANIO",
+    titulo: str = "",
+    y_label: str = "Toneladas",
+    max_anios: int = 5,
+) -> go.Figure:
+    if df.empty:
+        return _empty_fig(titulo)
+
+    anios = sorted(df[anio_col].unique(), reverse=True)[:max_anios]
+    fig = go.Figure()
+    palette = COLOR_SEQUENCE
+    for i, anio in enumerate(sorted(anios)):
+        df_a = df[df[anio_col] == anio].copy()
+        fig.add_trace(go.Scatter(
+            x=df_a[x], y=df_a[y], name=str(anio),
+            mode="lines+markers",
+            line=dict(color=palette[i % len(palette)], width=2),
+            marker=dict(size=5),
+        ))
+    fig.update_layout(
+        **_LAYOUT_BASE,
+        title=dict(text=titulo, font=dict(size=14, color=COLORS["text"]), x=0),
+        xaxis_title="",
+        yaxis_title=y_label,
+    )
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(gridcolor=COLORS["border"])
+    return fig
+
+
+def sparkline(
+    series: list[float] | pd.Series,
+    color: str | None = None,
+    height: int = 60,
+    show_area: bool = True,
+) -> go.Figure:
+    data = list(series) if not isinstance(series, list) else series
+    c = color or COLORS["primary"]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        y=data,
+        mode="lines",
+        line=dict(color=c, width=2),
+        fill="tozeroy" if show_area else "none",
+        fillcolor=c.replace(")", ",0.15)").replace("rgb", "rgba") if "rgb" in c else f"{c}26",
+        hoverinfo="skip",
+    ))
+    fig.update_layout(
+        height=height,
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    return fig
+
+
+def gauge_chart(
+    value: float,
+    min_val: float = 0,
+    max_val: float = 100,
+    titulo: str = "",
+    suffix: str = "%",
+    threshold_warn: float | None = None,
+    threshold_crit: float | None = None,
+) -> go.Figure:
+    steps = []
+    if threshold_crit is not None:
+        steps = [
+            dict(range=[min_val, threshold_warn or max_val * 0.5], color=COLORS["surface2"]),
+            dict(range=[threshold_warn or max_val * 0.5, threshold_crit], color=COLORS["surface2"]),
+            dict(range=[threshold_crit, max_val], color=COLORS["surface2"]),
+        ]
+
+    bar_color = COLORS["primary"]
+    if threshold_warn is not None and value < threshold_warn:
+        bar_color = COLORS["danger"]
+    elif threshold_crit is not None and value < threshold_crit:
+        bar_color = COLORS["warning"]
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=value,
+        number=dict(suffix=suffix, font=dict(color=COLORS["text"], size=28)),
+        gauge=dict(
+            axis=dict(range=[min_val, max_val], tickcolor=COLORS["text_light"],
+                      tickfont=dict(color=COLORS["text_light"], size=11)),
+            bar=dict(color=bar_color, thickness=0.6),
+            bgcolor=COLORS["surface2"],
+            borderwidth=1,
+            bordercolor=COLORS["border"],
+            steps=steps,
+            threshold=dict(
+                line=dict(color=COLORS["accent"], width=2),
+                thickness=0.75,
+                value=value,
+            ) if threshold_crit else None,
+        ),
+        title=dict(text=titulo, font=dict(color=COLORS["text_light"], size=12)),
+    ))
+    fig.update_layout(
+        paper_bgcolor=COLORS["surface"],
+        font=dict(family="Inter, Arial, sans-serif", color=COLORS["text"]),
+        margin=dict(l=20, r=20, t=50, b=20),
+        height=220,
     )
     return fig
 
@@ -250,7 +406,7 @@ def _empty_fig(titulo: str = "") -> go.Figure:
     fig = go.Figure()
     fig.update_layout(
         **_LAYOUT_BASE,
-        title=dict(text=titulo, font=dict(size=14, color=COLORS["primary"]), x=0),
+        title=dict(text=titulo, font=dict(size=14, color=COLORS["text"]), x=0),
         annotations=[dict(
             text="Sin datos disponibles para el periodo seleccionado.",
             xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
