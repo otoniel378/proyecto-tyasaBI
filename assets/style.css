@@ -1,7 +1,7 @@
-/* ============================================================
-   style.css — Estilos TYASA BI estilo Power BI
-   Claro, minimalista y limpio
-   ============================================================ */
+/* ===========================================================
+   style.css — Estilos TYASA BI estilo Power BI Dashboard
+   Diseño limpio, profesional y moderno
+   =========================================================== */
 
 /* Reset y tipografía */
 html, body, [class*="css"] {
@@ -13,14 +13,31 @@ html, body, [class*="css"] {
 
 /* Fondo general */
 [data-testid="stAppViewContainer"] {
-    background-color: #F8F9FA;
+    background-color: #F0F2F5;
 }
 
 [data-testid="stAppViewContainer"] > main {
-    background-color: #F8F9FA;
+    background-color: #F0F2F5;
+    padding: 1rem 2rem;
 }
 
-/* Sidebar estilo Power BI */
+/* ===========================================================
+   HEADER PRINCIPAL (estilo Power BI top bar)
+   =========================================================== */
+div[data-testid="stVerticalBlock"] > div:first-child {
+    background: linear-gradient(135deg, #1B3A5C 0%, #2C5282 100%);
+    padding: 16px 32px;
+    margin: -1rem -2rem 24px -2rem;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* ===========================================================
+   SIDEBAR estilo Power BI
+   =========================================================== */
 [data-testid="stSidebar"] {
     background-color: #FFFFFF;
     border-right: 1px solid #E1E4E8;
@@ -82,7 +99,9 @@ html, body, [class*="css"] {
     border-left: 3px solid #1B3A5C;
 }
 
-/* Encabezados */
+/* ===========================================================
+   ENCABEZADOS
+   =========================================================== */
 h1 {
     color: #111827;
     font-weight: 700;
@@ -104,7 +123,9 @@ h3 {
     margin-bottom: 8px;
 }
 
-/* KPI Cards estilo Power BI */
+/* ===========================================================
+   KPI CARDS estilo Power BI
+   =========================================================== */
 [data-testid="metric-container"] {
     background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
@@ -158,7 +179,9 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="metric-container"] {
     margin-bottom: 0;
 }
 
-/* Tarjetas/Containers estilo Power BI */
+/* ===========================================================
+   TARJETAS/CONTENEDORES estilo Power BI
+   =========================================================== */
 div.stMarkdown {
     background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
@@ -168,7 +191,9 @@ div.stMarkdown {
     margin-bottom: 16px;
 }
 
-/* Tabs estilo Power BI */
+/* ===========================================================
+   TABS estilo Power BI
+   =========================================================== */
 .stTabs [data-baseweb="tab-list"] {
     gap: 4px;
     background-color: transparent;
@@ -196,7 +221,9 @@ div.stMarkdown {
     border-bottom: 2px solid #1B3A5C;
 }
 
-/* Botones primarios */
+/* ===========================================================
+   BOTONES
+   =========================================================== */
 .stButton > button {
     background-color: #1B3A5C;
     color: white;
@@ -233,7 +260,9 @@ div.stMarkdown {
     color: #1B3A5C;
 }
 
-/* Selectbox y dropdowns */
+/* ===========================================================
+   SELECTBOX Y DROPDOWNS
+   =========================================================== */
 [data-baseweb="select"] > div {
     background-color: #FFFFFF;
     border: 1px solid #D1D5DB;
@@ -266,7 +295,9 @@ div.stMarkdown {
     border-radius: 4px;
 }
 
-/* DataFrames / Tablas */
+/* ===========================================================
+   DATAFRAMES / TABLAS
+   =========================================================== */
 [data-testid="stDataFrame"] {
     background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
@@ -291,7 +322,9 @@ div.stMarkdown {
     background-color: #F9FAFB;
 }
 
-/* Expander */
+/* ===========================================================
+   EXPANDER
+   =========================================================== */
 .stExpander {
     background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
@@ -304,7 +337,9 @@ div.stMarkdown {
     font-weight: 600;
 }
 
-/* Alertas */
+/* ===========================================================
+   ALERTAS
+   =========================================================== */
 .stAlert {
     border-radius: 8px;
     border: none;
@@ -316,7 +351,9 @@ div.stMarkdown {
     color: #92400E;
 }
 
-/* Expansor/Container principal */
+/* ===========================================================
+   EXPANSOR/CONTAINER PRINCIPAL
+   =========================================================== */
 .block-container {
     padding-top: 1.5rem;
     padding-bottom: 2rem;
@@ -324,13 +361,17 @@ div.stMarkdown {
     padding-right: 2rem;
 }
 
-/* Divisores */
+/* ===========================================================
+   DIVISORES
+   =========================================================== */
 hr {
     border-color: #E5E7EB;
     margin: 20px 0;
 }
 
-/* Tooltip */
+/* ===========================================================
+   TOOLTIP
+   =========================================================== */
 div[data-testid="stTooltip"] {
     background-color: #1F2937 !important;
     color: white !important;
@@ -338,12 +379,16 @@ div[data-testid="stTooltip"] {
     font-size: 0.8rem;
 }
 
-/* Spinner */
+/* ===========================================================
+   SPINNER
+   =========================================================== */
 [data-testid="stSpinner"] {
     padding: 40px;
 }
 
-/* Scrollbar estilizado */
+/* ===========================================================
+   SCROLLBAR ESTILIZADO
+   =========================================================== */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -363,7 +408,9 @@ div[data-testid="stTooltip"] {
     background: #A8A8A8;
 }
 
-/* Subsecciones en navegación - estilo carpeta */
+/* ===========================================================
+   SUBSECCIONES EN NAVEGACIÓN
+   =========================================================== */
 [data-testid="stSidebar"] .stVerticalNavSectionLabel {
     background-color: transparent !important;
 }
@@ -374,50 +421,9 @@ div[data-testid="stTooltip"] {
     border-left: 1px dashed #D1D5DB;
 }
 
-/* Subsection headers en navegación */
-.nav-subsection {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #6B7280;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 8px 16px 4px;
-    margin-top: 8px;
-    display: block;
-    border-bottom: 1px solid #E5E7EB;
-    width: 100%;
-}
-
-/* Badge / Tag */
-span[data-testid="stBadge"] {
-    background-color: #EBF4FF;
-    color: #1B3A5C;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-/* Columnas con padding */
-div[data-testid="stColumn"] {
-    padding-left: 12px;
-    padding-right: 12px;
-}
-
-/* Título de página - header estilo Power BI */
-[data-testid="stHeader"] {
-    background-color: transparent;
-    border-bottom: 1px solid #E5E7EB;
-    padding-bottom: 16px;
-    margin-bottom: 24px;
-}
-
-/* Estilo para gráficos Plotly */
-.js-plotly-plot .plotly .main-svg {
-    background-color: transparent !important;
-}
-
-/* Custom card wrapper */
+/* ===========================================================
+   CUSTOM CARD WRAPPER
+   =========================================================== */
 .powerbi-card {
     background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
@@ -431,7 +437,9 @@ div[data-testid="stColumn"] {
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
 }
 
-/* Sección con título */
+/* ===========================================================
+   SECCIÓN CON TÍTULO
+   =========================================================== */
 .section-header {
     display: flex;
     align-items: center;
@@ -447,7 +455,9 @@ div[data-testid="stColumn"] {
     color: #1B3A5C;
 }
 
-/* Indicador visual para KPIs */
+/* ===========================================================
+   INDICAOR VISUAL PARA KPIs
+   =========================================================== */
 .kpi-indicator {
     display: inline-block;
     width: 4px;

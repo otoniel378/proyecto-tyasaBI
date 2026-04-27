@@ -105,8 +105,8 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 st.markdown("""
 <div style="background: linear-gradient(135deg, #1B3A5C 0%, #2C5282 100%); 
-            padding: 20px 32px; 
-            margin: -1rem -1rem 24px -1rem;
+            padding: 16px 32px; 
+            margin: -1rem -2rem 24px -2rem;
             border-radius: 0;
             display: flex;
             align-items: center;
