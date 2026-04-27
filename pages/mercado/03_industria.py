@@ -492,11 +492,13 @@ man_area = st.empty()
 if run_man and _GEMINI_KEY:
     man_area.markdown(_render_mananera_full(None, loading=True), unsafe_allow_html=True)
     st.session_state[skey_man] = analizar_mananera(_GEMINI_KEY, fecha_man_str, force_refresh=frz_man)
+    st.rerun()
 elif run_man:
     st.session_state[skey_man] = {
         "tiene_contenido_relevante": False,
         "_error": "Configura GEMINI_API_KEY en .streamlit/secrets.toml",
     }
+    st.rerun()
 
 man_area.markdown(
     _render_mananera_full(st.session_state.get(skey_man)),
@@ -523,8 +525,10 @@ if run_sint and _GEMINI_KEY:
     noticias_todos = {g: _noticias_grupo(g, 8) for g in GRUPOS_INDUSTRIA}
     sint = sintesis_industrial(noticias_todos, _GEMINI_KEY, force_refresh=frz_sint)
     st.session_state["sint_result"] = sint
+    st.rerun()
 elif run_sint:
     st.session_state["sint_result"] = {"_error": "Configura GEMINI_API_KEY en .streamlit/secrets.toml"}
+    st.rerun()
 
 sint_area.markdown(
     _render_sintesis_full(st.session_state.get("sint_result")),
