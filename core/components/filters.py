@@ -1,8 +1,5 @@
 """
 filters.py — Filtros globales reutilizables para el sidebar.
-Cada funcion renderiza un control en el sidebar y devuelve el valor seleccionado.
-Los filtros que dependen de catalogos importan del area activa (Aceros Planos Negros).
-Cuando otras areas se integren, podran sobreescribir estos filtros con sus propios loaders.
 """
 
 import streamlit as st
@@ -26,14 +23,14 @@ def filtro_rango_fechas(key_prefix: str = "") -> tuple[date, date]:
         return today.replace(year=today.year - 2), today
 
     fecha_inicio = st.sidebar.date_input(
-        "Fecha inicio",
+        "Desde",
         value=fecha_min.date() if hasattr(fecha_min, "date") else fecha_min,
         min_value=fecha_min.date() if hasattr(fecha_min, "date") else fecha_min,
         max_value=fecha_max.date() if hasattr(fecha_max, "date") else fecha_max,
         key=f"{key_prefix}_fecha_inicio",
     )
     fecha_fin = st.sidebar.date_input(
-        "Fecha fin",
+        "Hasta",
         value=fecha_max.date() if hasattr(fecha_max, "date") else fecha_max,
         min_value=fecha_min.date() if hasattr(fecha_min, "date") else fecha_min,
         max_value=fecha_max.date() if hasattr(fecha_max, "date") else fecha_max,
@@ -41,7 +38,7 @@ def filtro_rango_fechas(key_prefix: str = "") -> tuple[date, date]:
     )
 
     if fecha_inicio > fecha_fin:
-        st.sidebar.error("La fecha inicio no puede ser posterior a la fecha fin.")
+        st.sidebar.error("Fecha inicio > fecha fin.")
 
     return fecha_inicio, fecha_fin
 
@@ -56,7 +53,7 @@ def filtro_clientes(key_prefix: str = "", multiselect: bool = True) -> list[str]
     if multiselect:
         return st.sidebar.multiselect(
             "Clientes", options=opciones, default=[],
-            placeholder="Todos los clientes", key=f"{key_prefix}_clientes",
+            placeholder="Todos", key=f"{key_prefix}_clientes",
         )
     else:
         return st.sidebar.selectbox("Cliente", options=opciones, key=f"{key_prefix}_cliente")
@@ -72,7 +69,7 @@ def filtro_productos(key_prefix: str = "", multiselect: bool = True) -> list[str
     if multiselect:
         return st.sidebar.multiselect(
             "Productos", options=opciones, default=[],
-            placeholder="Todos los productos", key=f"{key_prefix}_productos",
+            placeholder="Todos", key=f"{key_prefix}_productos",
         )
     else:
         return st.sidebar.selectbox("Producto", options=opciones, key=f"{key_prefix}_producto")
@@ -87,7 +84,7 @@ def filtro_procesos(key_prefix: str = "") -> list[str]:
 
     return st.sidebar.multiselect(
         "Procesos", options=opciones, default=[],
-        placeholder="Todos los procesos", key=f"{key_prefix}_procesos",
+        placeholder="Todos", key=f"{key_prefix}_procesos",
     )
 
 
@@ -119,20 +116,15 @@ def aplicar_filtro_lista(
 def sidebar_header(titulo: str, icono: str = "🔩") -> None:
     st.sidebar.markdown(
         f"""
-        <div style='
-            text-align:center;
-            padding:8px 0 16px 0;
-            border-bottom:2px solid {COLORS["primary"]};
-            margin-bottom:12px;
-        '>
-            <div style='font-size:1.8rem;'>{icono}</div>
-            <div style='
-                color:{COLORS["primary"]};
-                font-weight:700;
-                font-size:0.9rem;
-                text-transform:uppercase;
-                letter-spacing:0.05em;
-            '>{titulo}</div>
+        <div style="
+            display:flex;align-items:center;gap:8px;
+            padding:6px 4px 10px;
+            border-bottom:1px solid #DDE3EC;
+            margin-bottom:10px;
+        ">
+            <span style="font-size:1rem;">{icono}</span>
+            <span style="color:#1B3A5C;font-weight:700;font-size:0.72rem;
+                         text-transform:uppercase;letter-spacing:0.07em;">{titulo}</span>
         </div>
         """,
         unsafe_allow_html=True,

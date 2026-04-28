@@ -20,10 +20,10 @@ from aceros_planos.negros.loaders import (
     load_gold_demanda_mensual_total,
 )
 from aceros_planos.negros.analytics.kpis import calcular_kpis_resumen, calcular_top_n, calcular_participacion
-from aceros_planos.negros.analytics.series_tiempo import preparar_serie_mensual, construir_heatmap_mes_anio
+from aceros_planos.negros.analytics.series_tiempo import preparar_serie_mensual
 from core.components.kpi_cards import render_kpi_row, seccion_titulo
 from core.components.filters import sidebar_header, filtro_rango_fechas, aplicar_filtro_fechas
-from core.components.charts import linea_temporal, barras_horizontales, donut, heatmap, treemap
+from core.components.charts import linea_temporal, barras_horizontales, barras_verticales, donut
 from core.components.tables import tabla_ejecutiva
 
 # ---------------------------------------------------------------------------
@@ -81,48 +81,61 @@ with col2:
 st.divider()
 
 # ---------------------------------------------------------------------------
-# Tendencia mensual
+# Fila 1: Tendencia mensual + Participacion por Producto
 # ---------------------------------------------------------------------------
-seccion_titulo("Tendencia Mensual de Demanda", "Serie de toneladas por mes")
+df_part = calcular_participacion(df_producto, "PRODUCTO_LIMPIO")
 
-if df_mensual_f.empty:
-    st.warning("Sin datos para el periodo seleccionado.")
-else:
-    serie = preparar_serie_mensual(df_mensual_f)
-    fig_linea = linea_temporal(serie, x="PERIODO", y="PESO_TON", titulo="Toneladas mensuales", show_area=True)
-    st.plotly_chart(fig_linea, use_container_width=True)
+col_trend, col_part = st.columns([2, 1])
 
-# ---------------------------------------------------------------------------
-# Participacion por producto y Heatmap
-# ---------------------------------------------------------------------------
-col_a, col_b = st.columns([3, 2])
+with col_trend:
+    seccion_titulo("Tendencia Mensual de Demanda", "Serie de toneladas por mes")
+    if df_mensual_f.empty:
+        st.warning("Sin datos para el periodo seleccionado.")
+    else:
+        serie = preparar_serie_mensual(df_mensual_f)
+        fig_linea = linea_temporal(serie, x="PERIODO", y="PESO_TON", titulo="Toneladas mensuales", show_area=True)
+        fig_linea.update_layout(height=290)
+        st.plotly_chart(fig_linea, use_container_width=True)
 
-with col_a:
-    seccion_titulo("Participacion por Producto", "Distribucion del volumen")
-    df_part = calcular_participacion(df_producto, "PRODUCTO_LIMPIO")
+with col_part:
     if not df_part.empty:
-        fig_treemap = treemap(df_part, path=["PRODUCTO_LIMPIO"], values="PESO_TON",
-                              titulo="Treemap — Toneladas por producto")
-        st.plotly_chart(fig_treemap, use_container_width=True)
+        seccion_titulo("Participacion por Producto", "")
+        fig_barras = barras_verticales(df_part.head(10), x="PRODUCTO_LIMPIO", y="PESO_TON",
+                                       titulo="", x_label="", y_label="Toneladas")
+        fig_barras.update_layout(height=290, xaxis_tickangle=-45)
+        st.plotly_chart(fig_barras, use_container_width=True)
 
-with col_b:
-    seccion_titulo("Mix Donut", "")
+# ---------------------------------------------------------------------------
+# Fila 2: Donut Mixto + Comparación Mes x Año (lado a lado)
+# ---------------------------------------------------------------------------
+col_donut, col_yoy = st.columns([1, 2])
+
+with col_donut:
     if not df_part.empty:
+        seccion_titulo("Mix por Producto", "")
         fig_donut = donut(df_part.head(8), names="PRODUCTO_LIMPIO", values="PESO_TON", titulo="")
+        fig_donut.update_layout(height=260, legend_orientation="h", legend_y=-0.25)
         st.plotly_chart(fig_donut, use_container_width=True)
 
-# ---------------------------------------------------------------------------
-# Heatmap Mes x Anio
-# ---------------------------------------------------------------------------
-seccion_titulo("Heatmap Mes x Anio", "Intensidad de demanda por periodo")
-
-if not df_mensual_f.empty:
-    serie_heat = preparar_serie_mensual(df_mensual_f)
-    if "ANIO" in serie_heat.columns:
-        pivot = construir_heatmap_mes_anio(serie_heat)
-        if not pivot.empty:
-            fig_heat = heatmap(pivot, titulo="Toneladas por Mes y Anio", x_label="Anio", y_label="Mes")
-            st.plotly_chart(fig_heat, use_container_width=True)
+with col_yoy:
+    if not df_mensual_f.empty:
+        serie_yoy = preparar_serie_mensual(df_mensual_f)
+        if "ANIO" in serie_yoy.columns and "MES" in serie_yoy.columns:
+            df_yoy = serie_yoy.copy()
+            df_yoy["AÑO"] = df_yoy["ANIO"].astype(str)
+            df_yoy = df_yoy.sort_values(["ANIO", "MES"])
+            seccion_titulo("Comparación Mes a Mes por Año", "Estacionalidad y patrones anuales")
+            fig_yoy = linea_temporal(df_yoy, x="MES", y="PESO_TON", color="AÑO", titulo="", y_label="Ton")
+            fig_yoy.update_layout(
+                height=260,
+                xaxis=dict(
+                    tickmode="array",
+                    tickvals=list(range(1, 13)),
+                    ticktext=["Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                              "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+                ),
+            )
+            st.plotly_chart(fig_yoy, use_container_width=True)
 
 # ---------------------------------------------------------------------------
 # Top 10 Clientes y Top 10 Productos

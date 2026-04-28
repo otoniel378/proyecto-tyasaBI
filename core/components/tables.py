@@ -1,6 +1,7 @@
 """
-tables.py — Tablas limpias, scrollables y exportables.
-Compartido entre todas las areas.
+tables.py — Tablas colapsables y exportables a Excel.
+Las tablas aparecen dentro de un expander (colapsado por defecto)
+para mantener el dashboard compacto sin perder la funcionalidad.
 """
 
 import io
@@ -12,19 +13,13 @@ from config import COLORS
 def tabla_ejecutiva(
     df: pd.DataFrame,
     titulo: str = "",
-    height: int = 400,
+    height: int = 320,
     col_formatos: dict | None = None,
     key: str = "tabla",
 ) -> None:
     if df is None or df.empty:
         st.info("Sin datos para mostrar.")
         return
-
-    if titulo:
-        st.markdown(
-            f"<h5 style='color:{COLORS['primary']};margin-bottom:6px;'>{titulo}</h5>",
-            unsafe_allow_html=True,
-        )
 
     df_display = df.copy()
     if col_formatos:
@@ -37,11 +32,13 @@ def tabla_ejecutiva(
                 except Exception:
                     pass
 
-    st.dataframe(df_display, height=height, use_container_width=True, hide_index=True)
-    _boton_descarga(df, key=key)
+    label = f"📋 {titulo}" if titulo else "📋 Ver tabla de datos"
+    with st.expander(label, expanded=False):
+        st.dataframe(df_display, height=height, use_container_width=True, hide_index=True)
+        _boton_descarga(df, key=key)
 
 
-def _boton_descarga(df: pd.DataFrame, key: str = "export", label: str = "Exportar Excel") -> None:
+def _boton_descarga(df: pd.DataFrame, key: str = "export", label: str = "⬇ Exportar Excel") -> None:
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Datos")
@@ -58,7 +55,7 @@ def _boton_descarga(df: pd.DataFrame, key: str = "export", label: str = "Exporta
 
 def tabla_clasificacion_abc(df_abc: pd.DataFrame, key: str = "abc") -> None:
     if df_abc.empty:
-        st.info("Sin datos para clasificacion ABC.")
+        st.info("Sin datos para clasificación ABC.")
         return
 
     col_formatos = {
@@ -74,34 +71,29 @@ def tabla_clasificacion_abc(df_abc: pd.DataFrame, key: str = "abc") -> None:
                 lambda v: fmt.format(v) if pd.notna(v) else ""
             )
 
-    st.dataframe(df_display, height=420, use_container_width=True, hide_index=True)
-    _boton_descarga(df_abc, key=key, label="Exportar clasificacion ABC")
+    with st.expander("📋 Clasificación ABC — detalle", expanded=False):
+        st.dataframe(df_display, height=320, use_container_width=True, hide_index=True)
+        _boton_descarga(df_abc, key=key, label="⬇ Exportar ABC")
 
 
-def tabla_metricas(metricas: dict, titulo: str = "Metricas del modelo") -> None:
+def tabla_metricas(metricas: dict, titulo: str = "Métricas del modelo") -> None:
     if not metricas:
         return
-
-    st.markdown(
-        f"<h5 style='color:{COLORS['primary']};margin-bottom:6px;'>{titulo}</h5>",
-        unsafe_allow_html=True,
-    )
 
     cols = st.columns(len(metricas))
     for col, (nombre, valor) in zip(cols, metricas.items()):
         with col:
             st.markdown(
                 f"""
-                <div style='
-                    background:{COLORS["surface"]};
-                    border:1px solid #E5E7EB;
-                    border-top:3px solid {COLORS["secondary"]};
-                    border-radius:6px;
-                    padding:12px 14px;
-                    text-align:center;
-                '>
-                    <div style='color:{COLORS["text_light"]};font-size:0.76rem;font-weight:600;text-transform:uppercase;'>{nombre}</div>
-                    <div style='color:{COLORS["primary"]};font-size:1.4rem;font-weight:700;'>{valor}</div>
+                <div style="
+                    background:#FFFFFF;border:1px solid #DDE3EC;
+                    border-top:3px solid #2563EB;border-radius:4px;
+                    padding:9px 12px;text-align:center;
+                ">
+                    <div style="color:#64748B;font-size:0.62rem;font-weight:700;
+                                text-transform:uppercase;letter-spacing:0.07em;">{nombre}</div>
+                    <div style="color:#0F172A;font-size:1.2rem;font-weight:700;
+                                line-height:1.2;margin-top:3px;">{valor}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,

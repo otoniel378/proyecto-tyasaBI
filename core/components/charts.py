@@ -1,260 +1,179 @@
 """
-charts.py — Funciones reutilizables de graficos con Plotly.
-Todas retornan figuras de Plotly configuradas con la paleta TYASA.
-Compartido entre todas las areas.
+charts.py - Graficos Plotly compactos estilo Power BI para TYASA BI.
 """
 
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-import numpy as np
-from config import COLORS, COLOR_SEQUENCE, HEATMAP_COLORSCALE
+from config import COLORS, HEATMAP_COLORSCALE
 
+_COLOR_SEQ = [
+    "#1B3A5C", "#3B82F6", "#06B6D4", "#10B981", "#F59E0B",
+    "#8B5CF6", "#EF4444", "#EC4899", "#14B8A6", "#F97316",
+]
+
+_FONT      = dict(family="Segoe UI, -apple-system, Inter, Arial", color="#334155", size=11)
+_AX_FONT   = dict(color="#64748B", size=10)
+_GRID      = "#EEF2F7"
+_LINE      = "#DDE3EC"
+_H = 240
 
 _LAYOUT_BASE = dict(
-    paper_bgcolor=COLORS["surface"],
-    plot_bgcolor=COLORS["background"],
-    font=dict(family="Inter, Arial, sans-serif", color=COLORS["text"], size=12),
-    margin=dict(l=40, r=20, t=50, b=40),
+    paper_bgcolor="#FFFFFF",
+    plot_bgcolor="#FFFFFF",
+    font=_FONT,
+    margin=dict(l=42, r=12, t=36, b=32),
     legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=-0.25,
-        xanchor="center",
-        x=0.5,
-        font=dict(size=11),
+        orientation="h", yanchor="bottom", y=-0.32,
+        xanchor="center", x=0.5,
+        font=dict(size=10, color="#64748B"),
+        bgcolor="rgba(0,0,0,0)",
     ),
 )
 
+_XAX = dict(showgrid=False, zeroline=False, linecolor=_LINE, tickfont=_AX_FONT, title_font=_AX_FONT, ticklen=3)
+_YAX = dict(showgrid=True, gridcolor=_GRID, gridwidth=1, zeroline=False, linecolor=_LINE, tickfont=_AX_FONT, title_font=_AX_FONT, ticklen=0)
 
-def linea_temporal(
-    df: pd.DataFrame,
-    x: str,
-    y: str,
-    color: str | None = None,
-    titulo: str = "",
-    y_label: str = "Toneladas",
-    show_area: bool = False,
-) -> go.Figure:
+
+def _title(text):
+    return dict(text=text, font=dict(size=12, color="#1E293B", family="Segoe UI, sans-serif"), x=0, xanchor="left", pad=dict(b=4))
+
+
+def linea_temporal(df, x, y, color=None, titulo="", y_label="Ton", show_area=False):
     if df.empty:
         return _empty_fig(titulo)
-
     if color and color in df.columns:
-        fig = px.line(
-            df, x=x, y=y, color=color,
-            color_discrete_sequence=COLOR_SEQUENCE,
-            title=titulo,
-        )
+        fig = px.line(df, x=x, y=y, color=color, color_discrete_sequence=_COLOR_SEQ)
     else:
-        fig = px.area(df, x=x, y=y, title=titulo) if show_area else px.line(df, x=x, y=y, title=titulo)
-        fig.update_traces(line_color=COLORS["primary"])
         if show_area:
-            fig.update_traces(fillcolor="rgba(27,58,92,0.15)")
-
-    fig.update_layout(
-        **_LAYOUT_BASE,
-        xaxis_title="",
-        yaxis_title=y_label,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
-    )
-    fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(gridcolor="#E5E7EB")
+            fig = px.area(df, x=x, y=y)
+            fig.update_traces(line=dict(color=COLORS["primary"], width=2), fillcolor="rgba(27,58,92,0.07)")
+        else:
+            fig = px.line(df, x=x, y=y)
+            fig.update_traces(line=dict(color=COLORS["primary"], width=2))
+    fig.update_traces(mode="lines+markers", marker=dict(size=3.5, symbol="circle"))
+    xax = dict(_XAX, title="")
+    yax = dict(_YAX, title=y_label)
+    fig.update_layout(**_LAYOUT_BASE, height=_H+20, title=_title(titulo), xaxis=xax, yaxis=yax, hovermode="x unified")
     return fig
 
 
-def barras_horizontales(
-    df: pd.DataFrame,
-    x: str,
-    y: str,
-    titulo: str = "",
-    x_label: str = "Toneladas",
-    max_items: int = 15,
-) -> go.Figure:
+def barras_horizontales(df, x, y, titulo="", x_label="Ton", max_items=12):
     if df.empty:
         return _empty_fig(titulo)
-
     df_plot = df.nlargest(max_items, x).sort_values(x, ascending=True)
-    fig = px.bar(
-        df_plot, x=x, y=y, orientation="h", title=titulo,
-        color_discrete_sequence=[COLORS["primary"]], text=x,
-    )
-    fig.update_traces(texttemplate="%{text:,.1f}", textposition="outside")
-    fig.update_layout(
-        **_LAYOUT_BASE,
-        xaxis_title=x_label,
-        yaxis_title="",
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
-        showlegend=False,
-    )
-    fig.update_xaxes(showgrid=True, gridcolor="#E5E7EB")
-    fig.update_yaxes(showgrid=False)
+    fig = px.bar(df_plot, x=x, y=y, orientation="h", color_discrete_sequence=[COLORS["primary"]], text=x)
+    fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside", textfont=dict(size=9, color="#64748B"), marker_line_width=0, marker_opacity=0.88)
+    xax = dict(_XAX, title=x_label, showgrid=True, gridcolor=_GRID)
+    yax = dict(_YAX, title="", showgrid=False, tickfont=dict(size=10, color="#334155"))
+    fig.update_layout(**_LAYOUT_BASE, title=_title(titulo), xaxis=xax, yaxis=yax, showlegend=False)
     return fig
 
 
-def donut(
-    df: pd.DataFrame,
-    names: str,
-    values: str,
-    titulo: str = "",
-    hole: float = 0.55,
-) -> go.Figure:
+def barras_verticales(df, x, y, titulo="", x_label="", y_label="Ton", max_items=12):
     if df.empty:
         return _empty_fig(titulo)
+    df_plot = df.nlargest(max_items, y)
+    fig = px.bar(df_plot, x=x, y=y, color_discrete_sequence=[COLORS["primary"]], text=y)
+    fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside", textfont=dict(size=9, color="#64748B"), marker_line_width=0, marker_opacity=0.88)
+    xax = dict(_XAX, title=x_label, tickangle=-45, tickfont=dict(size=9, color="#334155"))
+    yax = dict(_YAX, title=y_label, showgrid=True, gridcolor=_GRID)
+    fig.update_layout(**_LAYOUT_BASE, title=_title(titulo), xaxis=xax, yaxis=yax, showlegend=False)
+    return fig
 
-    fig = px.pie(
-        df, names=names, values=values, hole=hole,
-        title=titulo, color_discrete_sequence=COLOR_SEQUENCE,
-    )
+
+def donut(df, names, values, titulo="", hole=0.55):
+    if df.empty:
+        return _empty_fig(titulo)
+    fig = px.pie(df, names=names, values=values, hole=hole, color_discrete_sequence=_COLOR_SEQ)
     fig.update_traces(
         textposition="outside",
         textinfo="percent+label",
-        hovertemplate="%{label}<br>%{value:,.1f} ton<br>%{percent}",
+        textfont=dict(size=10, family="Segoe UI, sans-serif"),
+        hovertemplate="%{label}<br>%{value:,.1f} ton - %{percent}",
+        marker=dict(line=dict(color="#FFFFFF", width=2.5)),
+        pull=[0.05] + [0]*20
     )
-    fig.update_layout(
-        **_LAYOUT_BASE,
-        showlegend=False,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
-    )
-    return fig
-
-
-def treemap(
-    df: pd.DataFrame,
-    path: list[str],
-    values: str,
-    titulo: str = "",
-) -> go.Figure:
-    if df.empty:
-        return _empty_fig(titulo)
-
-    fig = px.treemap(
-        df, path=path, values=values, title=titulo,
-        color=values, color_continuous_scale=HEATMAP_COLORSCALE,
-    )
-    fig.update_layout(
-        **_LAYOUT_BASE,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
-    )
-    return fig
-
-
-def heatmap(
-    pivot_df: pd.DataFrame,
-    titulo: str = "",
-    x_label: str = "Anio",
-    y_label: str = "Mes",
-    fmt: str = ".0f",
-) -> go.Figure:
-    if pivot_df.empty:
-        return _empty_fig(titulo)
-
-    fig = go.Figure(
-        go.Heatmap(
-            z=pivot_df.values,
-            x=[str(c) for c in pivot_df.columns],
-            y=pivot_df.index.tolist(),
-            colorscale=HEATMAP_COLORSCALE,
-            hoverongaps=False,
-            hovertemplate=f"<b>%{{y}} — %{{x}}</b><br>Toneladas: %{{z:{fmt}}}<extra></extra>",
-            showscale=True,
-        )
-    )
-    fig.update_layout(
-        **_LAYOUT_BASE,
-        title=dict(text=titulo, font=dict(size=14, color=COLORS["primary"]), x=0),
-        xaxis_title=x_label,
-        yaxis_title=y_label,
-    )
-    return fig
-
-
-def pareto(
-    df: pd.DataFrame,
-    x: str,
-    y: str,
-    y_acum: str = "PCT_ACUM",
-    titulo: str = "Analisis Pareto",
-    max_items: int = 30,
-) -> go.Figure:
-    if df.empty:
-        return _empty_fig(titulo)
-
-    df_plot = df.head(max_items).copy()
-    fig = go.Figure()
-
-    fig.add_trace(go.Bar(
-        x=df_plot[x], y=df_plot[y], name="Toneladas",
-        marker_color=COLORS["primary"],
-        hovertemplate=f"%{{x}}<br>Toneladas: %{{y:,.1f}}<extra></extra>",
-    ))
-
-    if y_acum in df_plot.columns:
-        fig.add_trace(go.Scatter(
-            x=df_plot[x], y=df_plot[y_acum], name="% Acumulado",
-            yaxis="y2",
-            line=dict(color=COLORS["warning"], width=2.5, dash="dot"),
-            mode="lines+markers", marker=dict(size=5),
-            hovertemplate=f"%{{x}}<br>Acumulado: %{{y:.1f}}%<extra></extra>",
-        ))
-        fig.add_hline(
-            y=80, yref="y2",
-            line=dict(color=COLORS["danger"], width=1.5, dash="dash"),
-            annotation_text="80%", annotation_position="right",
-        )
-
-    layout = {k: v for k, v in _LAYOUT_BASE.items() if k != "legend"}
+    # Avoid duplicate legend from _LAYOUT_BASE
+    layout = dict(_LAYOUT_BASE)
+    layout.pop("legend", None)
     fig.update_layout(
         **layout,
-        title=dict(text=titulo, font=dict(size=14, color=COLORS["primary"]), x=0),
-        xaxis=dict(title="", tickangle=-40, showgrid=False),
-        yaxis=dict(title="Toneladas", gridcolor="#E5E7EB"),
-        yaxis2=dict(
-            title="% Acumulado", overlaying="y", side="right",
-            range=[0, 105], showgrid=False, ticksuffix="%",
+        title=_title(titulo),
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="right",
+            x=1.3,
+            font=dict(size=9, color="#334155"),
+            bgcolor="rgba(0,0,0,0)",
         ),
-        legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
-        barmode="overlay",
     )
     return fig
 
 
-def scatter(
-    df: pd.DataFrame,
-    x: str,
-    y: str,
-    size: str | None = None,
-    color: str | None = None,
-    hover_name: str | None = None,
-    titulo: str = "",
-    x_label: str = "",
-    y_label: str = "",
-) -> go.Figure:
+def barras_verticales(df, x, y, titulo="", y_label="Ton", x_label="", max_items=12):
     if df.empty:
         return _empty_fig(titulo)
-
-    fig = px.scatter(
-        df, x=x, y=y, size=size, color=color, hover_name=hover_name,
-        title=titulo, color_discrete_sequence=COLOR_SEQUENCE,
-        color_continuous_scale=HEATMAP_COLORSCALE,
+    df_plot = df.nlargest(max_items, y) if y in df.columns else df.head(max_items)
+    fig = px.bar(df_plot, x=x, y=y, color_discrete_sequence=[COLORS["primary"]], text=y)
+    fig.update_traces(
+        texttemplate="%{text:,.0f}", textposition="outside",
+        textfont=dict(size=9, color="#64748B"),
+        marker_line_width=0, marker_opacity=0.88,
     )
-    fig.update_layout(
-        **_LAYOUT_BASE,
-        xaxis_title=x_label or x,
-        yaxis_title=y_label or y,
-        title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
-    )
+    xax = dict(_XAX, title=x_label, tickangle=-30, tickfont=dict(size=9, color="#334155"))
+    yax = dict(_YAX, title=y_label)
+    fig.update_layout(**_LAYOUT_BASE, title=_title(titulo), xaxis=xax, yaxis=yax, showlegend=False)
     return fig
 
 
-def _empty_fig(titulo: str = "") -> go.Figure:
+def treemap(df, path, values, titulo=""):
+    if df.empty:
+        return _empty_fig(titulo)
+    fig = px.treemap(df, path=path, values=values, color=values, color_continuous_scale=HEATMAP_COLORSCALE)
+    fig.update_traces(textfont=dict(size=11, family="Segoe UI, sans-serif"), marker=dict(line=dict(width=2, color="#FFFFFF")), hovertemplate="%{label}<br>%{value:,.1f} ton<extra></extra>")
+    fig.update_layout(**_LAYOUT_BASE, title=_title(titulo), coloraxis_showscale=False)
+    return fig
+
+
+def heatmap(pivot_df, titulo="", x_label="Ano", y_label="Mes", fmt=".0f"):
+    if pivot_df.empty:
+        return _empty_fig(titulo)
+    fig = go.Figure(data=go.Heatmap(z=pivot_df.values, x=[str(c) for c in pivot_df.columns], y=pivot_df.index.tolist(), colorscale=HEATMAP_COLORSCALE, hoverongaps=False, hovertemplate=f"<b>%{{y}} - %{{x}}</b><br>%{{z:{fmt}}} ton<extra></extra>", showscale=True))
+    xax = dict(_XAX, title=x_label)
+    yax = dict(_YAX, title=y_label, showgrid=False)
+    fig.update_layout(**_LAYOUT_BASE, title=_title(titulo), xaxis=xax, yaxis=yax, coloraxis_colorbar=dict(thickness=10, tickfont=dict(size=9, color="#64748B"), outlinewidth=0))
+    return fig
+
+
+def pareto(df, x, y, y_acum="PCT_ACUM", titulo="Analisis Pareto", max_items=25):
+    if df.empty:
+        return _empty_fig(titulo)
+    df_plot = df.head(max_items).copy()
     fig = go.Figure()
-    fig.update_layout(
-        **_LAYOUT_BASE,
-        title=dict(text=titulo, font=dict(size=14, color=COLORS["primary"]), x=0),
-        annotations=[dict(
-            text="Sin datos disponibles para el periodo seleccionado.",
-            xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
-            font=dict(size=13, color=COLORS["neutral"]),
-        )],
-    )
+    fig.add_trace(go.Bar(x=df_plot[x], y=df_plot[y], name="Toneladas", marker_color=COLORS["primary"], marker_opacity=0.88, marker_line_width=0, hovertemplate="%{x}<br>%{y:,.1f} ton<extra></extra>"))
+    if y_acum in df_plot.columns:
+        fig.add_trace(go.Scatter(x=df_plot[x], y=df_plot[y_acum], name="% Acum.", yaxis="y2", line=dict(color="#F59E0B", width=1.8, dash="dot"), mode="lines+markers", marker=dict(size=3.5, color="#F59E0B"), hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>"))
+        fig.add_hline(y=80, yref="y2", line=dict(color="#EF4444", width=1, dash="dash"), annotation_text="80%", annotation_position="right", annotation_font=dict(size=9, color="#EF4444"))
+    layout = {k: v for k, v in _LAYOUT_BASE.items() if k != "legend"}
+    xax = dict(_XAX, tickangle=-38, tickfont=dict(size=8, color="#64748B"))
+    yax = dict(_YAX, title="Ton")
+    fig.update_layout(**layout, height=_H+20, title=_title(titulo), xaxis=xax, yaxis=yax, yaxis2=dict(title="% Acum.", overlaying="y", side="right", range=[0, 108], showgrid=False, ticksuffix="%", tickfont=_AX_FONT, title_font=_AX_FONT), legend=dict(orientation="h", y=-0.35, x=0.5, xanchor="center", font=dict(size=9, color="#64748B")), barmode="overlay")
+    return fig
+
+
+def scatter(df, x, y, size=None, color=None, hover_name=None, titulo="", x_label="", y_label=""):
+    if df.empty:
+        return _empty_fig(titulo)
+    fig = px.scatter(df, x=x, y=y, size=size, color=color, hover_name=hover_name, color_discrete_sequence=_COLOR_SEQ, color_continuous_scale=HEATMAP_COLORSCALE)
+    fig.update_layout(**_LAYOUT_BASE, title=_title(titulo), xaxis=dict(_XAX, title=x_label or x), yaxis=dict(_YAX, title=y_label or y))
+    return fig
+
+
+def _empty_fig(titulo=""):
+    fig = go.Figure()
+    fig.update_layout(**_LAYOUT_BASE, title=_title(titulo), xaxis=dict(visible=False), yaxis=dict(visible=False), annotations=[dict(text="Sin datos para el periodo seleccionado", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False, font=dict(size=11, color="#94A3B8"))])
     return fig

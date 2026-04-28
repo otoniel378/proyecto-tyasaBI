@@ -487,20 +487,15 @@ if skey_man not in st.session_state:
         except Exception:
             pass
 
-man_area = st.empty()
-
 if run_man and _GEMINI_KEY:
-    man_area.markdown(_render_mananera_full(None, loading=True), unsafe_allow_html=True)
     st.session_state[skey_man] = analizar_mananera(_GEMINI_KEY, fecha_man_str, force_refresh=frz_man)
-    st.rerun()
 elif run_man:
     st.session_state[skey_man] = {
         "tiene_contenido_relevante": False,
         "_error": "Configura GEMINI_API_KEY en .streamlit/secrets.toml",
     }
-    st.rerun()
 
-man_area.markdown(
+st.markdown(
     _render_mananera_full(st.session_state.get(skey_man)),
     unsafe_allow_html=True,
 )
@@ -518,19 +513,13 @@ with col_btn_s:
 with col_frz_s:
     frz_sint = st.checkbox("Regenerar", key="sint_frz", value=False)
 
-sint_area = st.empty()
-
 if run_sint and _GEMINI_KEY:
-    sint_area.markdown(_render_sintesis_full(None, loading=True), unsafe_allow_html=True)
     noticias_todos = {g: _noticias_grupo(g, 8) for g in GRUPOS_INDUSTRIA}
-    sint = sintesis_industrial(noticias_todos, _GEMINI_KEY, force_refresh=frz_sint)
-    st.session_state["sint_result"] = sint
-    st.rerun()
+    st.session_state["sint_result"] = sintesis_industrial(noticias_todos, _GEMINI_KEY, force_refresh=frz_sint)
 elif run_sint:
     st.session_state["sint_result"] = {"_error": "Configura GEMINI_API_KEY en .streamlit/secrets.toml"}
-    st.rerun()
 
-sint_area.markdown(
+st.markdown(
     _render_sintesis_full(st.session_state.get("sint_result")),
     unsafe_allow_html=True,
 )
@@ -559,7 +548,7 @@ with col_act:
     st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
     if st.button("🔄 Actualizar", key="ind_refresh", use_container_width=True):
         st.cache_data.clear()
-        st.rerun()
+        # no st.rerun() — cache is cleared before _noticias_grupo() calls below
 
 if isinstance(rango, (list, tuple)) and len(rango) == 2:
     fecha_desde, fecha_hasta = str(rango[0]), str(rango[1])
@@ -654,20 +643,25 @@ CHAT_KEY_IND = "chat_industria_msgs"
 if CHAT_KEY_IND not in st.session_state:
     st.session_state[CHAT_KEY_IND] = []
 
-msgs_ind = st.session_state[CHAT_KEY_IND]
-
-chat_area = st.empty()
-chat_area.markdown(_render_chat_html(msgs_ind, bool(_GEMINI_KEY)), unsafe_allow_html=True)
+# Reserve visual slot above the input controls — filled after processing
+chat_placeholder = st.container()
 
 prompt_ind = st.chat_input(
     "Pregunta sobre la industria siderúrgica...",
-    key="chat_input_industria"
+    key="chat_input_industria",
 )
+
+if st.button("🗑 Limpiar conversación", key="chat_ind_clear"):
+    st.session_state[CHAT_KEY_IND] = []
+    # no st.rerun() — placeholder below will render empty list
+
+# Process new message synchronously (no spinner, no rerun)
 if prompt_ind and _GEMINI_KEY:
-    msgs_ind.append({"role": "user", "content": prompt_ind})
+    msgs = st.session_state[CHAT_KEY_IND]
+    msgs.append({"role": "user", "content": prompt_ind})
     hist_txt = "\n".join(
         f"{'Analista' if m['role']=='assistant' else 'Usuario'}: {m['content']}"
-        for m in msgs_ind[:-1]
+        for m in msgs[:-1]
     )
     full_prompt_ind = (
         "Contexto: Analista de la industria siderúrgica para TYASA México.\n\n"
@@ -675,10 +669,11 @@ if prompt_ind and _GEMINI_KEY:
         f"Usuario: {prompt_ind}"
     )
     resp_ind = _call_gemini_text(full_prompt_ind, _GEMINI_KEY)
-    msgs_ind.append({"role": "assistant", "content": resp_ind})
-    st.session_state[CHAT_KEY_IND] = msgs_ind
-    st.rerun()
+    msgs.append({"role": "assistant", "content": resp_ind})
 
-if st.button("🗑 Limpiar conversación", key="chat_ind_clear"):
-    st.session_state[CHAT_KEY_IND] = []
-    st.rerun()
+# Render final chat state into the reserved slot (above the input)
+with chat_placeholder:
+    st.markdown(
+        _render_chat_html(st.session_state[CHAT_KEY_IND], bool(_GEMINI_KEY)),
+        unsafe_allow_html=True,
+    )

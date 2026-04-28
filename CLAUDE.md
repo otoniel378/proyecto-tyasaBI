@@ -91,11 +91,34 @@ cloud_functions/
 6. Cada página nueva tiene sidebar_header() + st.spinner() en carga de datos
 7. Caché de análisis IA en JSON — nunca llamar Gemini si ya existe la respuesta
 
+## Patrón obligatorio para llamadas IA con botón (2026-04-28)
+NUNCA usar st.empty().markdown(loading) antes de st.rerun() — causa NotFoundError removeChild en React.
+Patrón correcto en toda página con botón + Gemini:
+```python
+if run and _GEMINI_KEY:
+    with st.spinner("Procesando…"):
+        result = ai_call(...)
+    st.session_state[key] = result
+    st.rerun()           # DESPUÉS del spinner, no antes
+st.markdown(render_fn(st.session_state.get(key)), unsafe_allow_html=True)
+```
+
+## CSS para pill tabs en app.py (2026-04-28)
+Para hacer botones grandes en st.columns(), el ÚNICO selector confiable es:
+```css
+.block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button {
+    height: 72px !important;      /* height, NO padding */
+    border-radius: 50px !important;
+}
+```
+Los selectores :has() con marcadores div/span fallan porque Streamlit envuelve
+st.markdown() en stVerticalBlock, rompiendo el combinator +.
+
 ## Notas de sesiones
 Las notas de cada sesión se guardan en:
 C:\Users\OTONIEL\Desktop\obsidian\sesiones\
 Plantilla: templates/sesion-claude.md
-Última sesión: 2026-04-12 — Sincronización repo → Obsidian
+Última sesión: 2026-04-28 — Rediseño Power BI + Fix removeChild definitivo
 
 ## Regla de documentación en Obsidian
 Cuando el usuario pida "anota esto en Obsidian" o "actualiza Obsidian" al final de una tarea:

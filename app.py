@@ -46,56 +46,125 @@ if os.path.exists(css_path):
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-.main-nav-btn {
-    background-color: #FFFFFF !important;
-    border: 2px solid #E5E7EB !important;
-    border-radius: 10px !important;
-    padding: 16px 20px !important;
-    margin: 4px 0 !important;
-    text-align: center !important;
-    font-size: 1rem !important;
-    font-weight: 600 !important;
-    color: #374151 !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+/* ══ SIDEBAR — Nav pills ══ */
+[data-testid="stSidebar"] .stButton > button {
+    background: #F1F5F9 !important; color: #475569 !important;
+    border: 1.5px solid #DDE3EC !important; border-radius: 10px !important;
+    padding: 9px 14px !important; margin: 3px 0 !important;
+    text-align: left !important; font-size: 0.80rem !important;
+    font-weight: 500 !important; width: 100% !important;
+    box-shadow: none !important; transform: none !important;
+    letter-spacing: 0.01em !important; transition: all 0.15s ease !important;
 }
-.main-nav-btn:hover {
-    background-color: #EBF4FF !important;
-    border-color: #1B3A5C !important;
-    color: #1B3A5C !important;
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: #DBEAFE !important; color: #1E40AF !important;
+    border-color: #93C5FD !important; box-shadow: 0 2px 6px rgba(59,130,246,0.15) !important;
 }
-.main-nav-btn.active {
-    background-color: #1B3A5C !important;
-    border-color: #1B3A5C !important;
-    color: white !important;
+[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    background: #1B3A5C !important; color: #FFFFFF !important;
+    border-color: #1B3A5C !important; font-weight: 700 !important;
+    box-shadow: 0 2px 8px rgba(27,58,92,0.25) !important; border-radius: 10px !important;
 }
-.subsecciones-container {
-    display: flex;
-    gap: 4px;
-    padding: 16px 0;
-    border-bottom: 2px solid #1B3A5C;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
+[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+    background: #16304E !important; color: #FFFFFF !important; border-color: #16304E !important;
 }
-.subseccion-tab {
-    background-color: #F3F4F6 !important;
-    border: 1px solid #E5E7EB !important;
-    border-radius: 8px 8px 0 0 !important;
-    padding: 12px 24px !important;
-    font-size: 0.95rem !important;
-    font-weight: 600 !important;
-    color: #4B5563 !important;
-    cursor: pointer;
-    transition: all 0.15s ease !important;
+
+/* ══════════════════════════════════════════════════════
+   TABS DE ÁREA Y MÓDULO — selector directo sobre .block-container
+   Esto aplica a TODOS los botones dentro de st.columns() en el
+   área principal. Es el único selector que funciona siempre.
+   ══════════════════════════════════════════════════════ */
+.block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] {
+    width: 100% !important;
 }
-.subseccion-tab:hover {
-    background-color: #E5E7EB !important;
-    color: #1B3A5C !important;
+.block-container [data-testid="stHorizontalBlock"] [data-testid="stColumn"] > div {
+    width: 100% !important;
 }
-.subseccion-tab.active {
-    background-color: #1B3A5C !important;
-    border-color: #1B3A5C !important;
-    color: white !important;
+.block-container [data-testid="stHorizontalBlock"] [data-testid="stColumn"] {
+    display: flex !important; justify-content: center !important;
+    align-items: center !important; padding: 5px 10px !important;
+}
+.block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button {
+    width: 100% !important;
+    height: 72px !important;
+    min-height: 72px !important;
+    border-radius: 50px !important;
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.025em !important;
+    border-width: 2.5px !important;
+    border-style: solid !important;
+    transition: all 0.18s ease !important;
+    box-shadow: none !important;
+    transform: none !important;
+    line-height: 1 !important;
+}
+
+/* ══ COLORES — Área tabs — usar SOLO + para no afectar módulos ══ */
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
+  > [data-testid="stColumn"]:nth-child(1) button[kind="secondary"] {
+    background: #EFF6FF !important; color: #1E40AF !important; border-color: #BFDBFE !important;
+}
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
+  > [data-testid="stColumn"]:nth-child(1) button[kind="primary"] {
+    background: #1D4ED8 !important; color: #fff !important; border-color: #1D4ED8 !important;
+    box-shadow: 0 6px 20px rgba(29,78,216,0.45) !important;
+}
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
+  > [data-testid="stColumn"]:nth-child(2) button[kind="secondary"] {
+    background: #ECFDF5 !important; color: #065F46 !important; border-color: #6EE7B7 !important;
+}
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
+  > [data-testid="stColumn"]:nth-child(2) button[kind="primary"] {
+    background: #059669 !important; color: #fff !important; border-color: #059669 !important;
+    box-shadow: 0 6px 20px rgba(5,150,105,0.45) !important;
+}
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
+  > [data-testid="stColumn"]:nth-child(3) button[kind="secondary"] {
+    background: #FFFBEB !important; color: #92400E !important; border-color: #FCD34D !important;
+}
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
+  > [data-testid="stColumn"]:nth-child(3) button[kind="primary"] {
+    background: #D97706 !important; color: #fff !important; border-color: #D97706 !important;
+    box-shadow: 0 6px 20px rgba(217,119,6,0.45) !important;
+}
+
+/* ══ COLORES — Module tabs (module-tabs-marker) ══ */
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
+  button[kind="secondary"],
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
+  button[kind="secondary"] {
+    background: #EFF6FF !important; color: #1E40AF !important; border-color: #BFDBFE !important;
+}
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
+  button[kind="secondary"]:hover,
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
+  button[kind="secondary"]:hover {
+    background: #DBEAFE !important; box-shadow: 0 4px 14px rgba(59,130,246,0.28) !important;
+    transform: translateY(-2px) !important;
+}
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
+  button[kind="primary"],
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
+  button[kind="primary"] {
+    background: #1B3A5C !important; color: #fff !important; border-color: #1B3A5C !important;
+    box-shadow: 0 6px 18px rgba(27,58,92,0.42) !important;
+}
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
+  button[kind="primary"]:hover,
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
+  button[kind="primary"]:hover {
+    background: #16304E !important; transform: translateY(-2px) !important;
+}
+
+/* ══ Reducir altura para módulos (5 botones, más compactos) ══ */
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
+  [data-testid="stButton"] > button,
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
+  [data-testid="stButton"] > button {
+    height: 60px !important;
+    min-height: 60px !important;
+    font-size: 0.88rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -104,27 +173,30 @@ st.markdown("""
 # Header estilo Power BI
 # ---------------------------------------------------------------------------
 st.markdown("""
-<div style="background: linear-gradient(135deg, #1B3A5C 0%, #2C5282 100%); 
-            padding: 20px 32px; 
-            margin: -1rem -1rem 24px -1rem;
-            border-radius: 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-    <div style="display: flex; align-items: center; gap: 16px;">
-        <span style="font-size: 2.5rem;">🏭</span>
+<div style="
+    background:#1B3A5C;
+    padding:10px 20px;
+    margin:-0.4rem -0.9rem 14px -0.9rem;
+    display:flex;align-items:center;justify-content:space-between;
+">
+    <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.1rem;">🏭</span>
         <div>
-            <h1 style="color: white; margin: 0; font-size: 1.5rem; font-weight: 700;">
+            <div style="color:#FFFFFF;font-size:0.88rem;font-weight:700;
+                        letter-spacing:0.01em;font-family:'Segoe UI',sans-serif;line-height:1.2;">
                 TYASA Business Intelligence
-            </h1>
-            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 0.9rem;">
+            </div>
+            <div style="color:rgba(255,255,255,0.55);font-size:0.62rem;font-weight:500;
+                        letter-spacing:0.06em;text-transform:uppercase;">
                 Plataforma de Inteligencia Comercial
-            </p>
+            </div>
         </div>
     </div>
-    <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">
-        📊 Powered by Streamlit & BigQuery
+    <div style="display:flex;align-items:center;gap:12px;">
+        <span style="color:rgba(255,255,255,0.35);font-size:0.62rem;font-weight:600;
+                     letter-spacing:0.08em;text-transform:uppercase;">
+            Streamlit · BigQuery · GCP
+        </span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -146,9 +218,9 @@ SUBSECCIONES = {
         "bienvenida": ("🏠", "Bienvenida"),
     },
     "aceros_planos": {
-        "negros": ("⚫", "Negros"),
-        "galvanizados": ("✨", "Galvanizados"),
-        "formados": ("🔧", "Formados"),
+        "negros": ("⚫", "Aceros Negros"),
+        "galvanizados": ("✨", "Aceros Galvanizados"),
+        "formados": ("🔧", "Aceros Formados"),
     },
     "aceros_largos": {
         "al_resumen": ("📊", "Resumen Ejecutivo"),
@@ -208,12 +280,12 @@ PAGINAS = {
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("### 📍 Navegación")
+    st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
     
     for seccion_id, seccion in SECCIONES.items():
         btn_type = "primary" if st.session_state.nav_seccion == seccion_id else "secondary"
         if st.button(f"{seccion['icon']} {seccion['label']}", use_container_width=True, type=btn_type, key=f"nav_{seccion_id}"):
             st.session_state.nav_seccion = seccion_id
-            #Primera subsección
             first_sub = list(SUBSECCIONES[seccion_id].keys())[0]
             st.session_state.nav_subseccion = first_sub
             st.rerun()
@@ -225,17 +297,16 @@ seccion_actual = st.session_state.nav_seccion
 subsecciones = SUBSECCIONES.get(seccion_actual, SUBSECCIONES["inicio"])
 
 if len(subsecciones) > 1:
-    st.markdown('<div class="subsecciones-container">', unsafe_allow_html=True)
-    
-    cols = st.columns(len(subsecciones))
+    st.markdown('<div id="area-tabs-marker" style="display:none"></div>', unsafe_allow_html=True)
+    all_cols = st.columns([1] * len(subsecciones))
+    tab_cols = all_cols
     for i, (sub_id, (icon, label)) in enumerate(subsecciones.items()):
-        with cols[i]:
+        with tab_cols[i]:
             btn_type = "primary" if st.session_state.nav_subseccion == sub_id else "secondary"
-            if st.button(f"{icon} {label}", type=btn_type, key=f"tab_{sub_id}"):
+            if st.button(f"{icon}  {label}", type=btn_type, key=f"tab_{sub_id}"):
                 st.session_state.nav_subseccion = sub_id
                 st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:12px'></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Cargar página según sección
@@ -273,20 +344,21 @@ if seccion == "aceros_planos" and subseccion == "negros":
         "apn_resumen": ("📊", "Resumen Ejecutivo"),
         "apn_seg": ("👥", "Segmentación"),
         "apn_series": ("📈", "Series de Tiempo"),
-        "apn_forecast": ("🔮", "Forecasting"),
+        "apn_forecast": ("🔮", "Pronóstico"),
         "apn_mix": ("🎯", "Mix de Productos"),
     }
-    
-    st.markdown('<div class="subsecciones-container">', unsafe_allow_html=True)
-    cols = st.columns(len(MODULOS_NEGROS))
+
+    st.markdown('<div id="module-tabs-marker" style="display:none"></div>', unsafe_allow_html=True)
+    mod_all = st.columns([1] * len(MODULOS_NEGROS))
+    mod_cols = mod_all
     for i, (mod_id, (icon, label)) in enumerate(MODULOS_NEGROS.items()):
-        with cols[i]:
+        with mod_cols[i]:
             active = st.session_state.get("nav_modulo_planos") == mod_id
             btn_type = "primary" if active else "secondary"
-            if st.button(f"{label}", type=btn_type, key=f"mod_{mod_id}"):
+            if st.button(f"{icon} {label}", type=btn_type, key=f"mod_{mod_id}"):
                 st.session_state.nav_modulo_planos = mod_id
                 st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:10px'></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Función para cargar página
