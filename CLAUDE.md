@@ -91,28 +91,37 @@ cloud_functions/
 6. Cada página nueva tiene sidebar_header() + st.spinner() en carga de datos
 7. Caché de análisis IA en JSON — nunca llamar Gemini si ya existe la respuesta
 
-## Patrón obligatorio para llamadas IA con botón (2026-04-28)
-NUNCA usar st.empty().markdown(loading) antes de st.rerun() — causa NotFoundError removeChild en React.
-Patrón correcto en toda página con botón + Gemini:
+## Patrón obligatorio para llamadas IA con botón (2026-04-28, corregido 2026-04-28)
+NUNCA usar st.rerun() en páginas con IA — causa NotFoundError removeChild en React.
+NUNCA usar st.spinner() + st.rerun() — mismo problema.
+Patrón correcto (sin rerun, sin spinner):
 ```python
 if run and _GEMINI_KEY:
-    with st.spinner("Procesando…"):
-        result = ai_call(...)
+    result = ai_call(...)          # bloquea; Streamlit muestra "Running..."
     st.session_state[key] = result
-    st.rerun()           # DESPUÉS del spinner, no antes
+# SIN st.rerun()
 st.markdown(render_fn(st.session_state.get(key)), unsafe_allow_html=True)
 ```
+Para chat: usar st.container() para out-of-order rendering — procesar mensaje ANTES de renderizar el HTML del chat, sin st.rerun().
 
-## CSS para pill tabs en app.py (2026-04-28)
-Para hacer botones grandes en st.columns(), el ÚNICO selector confiable es:
+## CSS para pill tabs en app.py (corregido 2026-04-28)
+NUNCA usar el selector broad .block-container — aplica a TODOS los widgets de todas
+las páginas y causa removeChild en React cuando hay date_input u otros widgets complejos.
+
+El selector CORRECTO usa :has(#marker) + stHorizontalBlock (stVerticalBlock como anchor):
 ```css
-.block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button {
-    height: 72px !important;      /* height, NO padding */
-    border-radius: 50px !important;
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
+  [data-testid="stButton"] > button {
+    height: 72px !important; border-radius: 50px !important;
+}
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
+  [data-testid="stButton"] > button {
+    height: 60px !important; border-radius: 50px !important;
 }
 ```
-Los selectores :has() con marcadores div/span fallan porque Streamlit envuelve
-st.markdown() en stVerticalBlock, rompiendo el combinator +.
+stVerticalBlock:has(#marker) ES el sibling directo de stHorizontalBlock → + funciona.
+stMarkdownContainer:has(#marker) NO ES sibling directo → + falla. 
+height funciona; padding es ignorado.
 
 ## Notas de sesiones
 Las notas de cada sesión se guardan en:

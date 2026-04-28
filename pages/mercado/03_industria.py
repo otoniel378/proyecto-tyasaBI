@@ -456,22 +456,22 @@ st.divider()
 seccion_titulo("🇲🇽 Analista de la Mañanera Presidencial")
 
 hoy_man = datetime.date.today()
-col_fman, col_bman, col_frzman = st.columns([3, 1, 1])
-with col_fman:
-    fecha_man = st.date_input(
-        "Fecha de la conferencia",
-        value=hoy_man,
-        min_value=hoy_man - datetime.timedelta(days=MANANERA_CACHE_DAYS),
-        max_value=hoy_man,
-        key="man_fecha",
-        format="DD/MM/YYYY",
-    )
-with col_bman:
-    st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
-    run_man = st.button("▶ Analizar", key="man_run", use_container_width=True)
-with col_frzman:
-    st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
-    frz_man = st.checkbox("Regenerar", key="man_frz", value=False)
+with st.form("form_mananera", border=False):
+    col_fman, col_bman, col_frzman = st.columns([3, 1, 1])
+    with col_fman:
+        fecha_man = st.date_input(
+            "Fecha de la conferencia",
+            value=hoy_man,
+            min_value=hoy_man - datetime.timedelta(days=MANANERA_CACHE_DAYS),
+            max_value=hoy_man,
+            format="DD/MM/YYYY",
+        )
+    with col_bman:
+        st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
+        run_man = st.form_submit_button("▶ Analizar", use_container_width=True)
+    with col_frzman:
+        st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
+        frz_man = st.checkbox("Regenerar", value=False)
 
 fecha_man_str = str(fecha_man)
 skey_man = f"mananera_{fecha_man_str}"
@@ -495,10 +495,7 @@ elif run_man:
         "_error": "Configura GEMINI_API_KEY en .streamlit/secrets.toml",
     }
 
-st.markdown(
-    _render_mananera_full(st.session_state.get(skey_man)),
-    unsafe_allow_html=True,
-)
+st.html(_render_mananera_full(st.session_state.get(skey_man)))
 
 st.divider()
 
@@ -519,10 +516,7 @@ if run_sint and _GEMINI_KEY:
 elif run_sint:
     st.session_state["sint_result"] = {"_error": "Configura GEMINI_API_KEY en .streamlit/secrets.toml"}
 
-st.markdown(
-    _render_sintesis_full(st.session_state.get("sint_result")),
-    unsafe_allow_html=True,
-)
+st.html(_render_sintesis_full(st.session_state.get("sint_result")))
 
 st.divider()
 
@@ -593,7 +587,7 @@ for tab, grupo in zip(tabs_nac, nac_grupos):
                 caption
                 + f"<div style='display:grid;grid-template-columns:repeat(2,1fr);gap:12px;'>{cards}</div>"
             )
-        st.markdown(html_tab, unsafe_allow_html=True)
+        st.html(html_tab)
 
 # ── Internacionales ───────────────────────────────────────────────────────────
 st.markdown(
@@ -630,7 +624,7 @@ for tab, grupo in zip(tabs_int, int_grupos):
                 caption
                 + f"<div style='display:grid;grid-template-columns:repeat(2,1fr);gap:12px;'>{cards}</div>"
             )
-        st.markdown(html_tab, unsafe_allow_html=True)
+        st.html(html_tab)
 
 st.divider()
 
@@ -673,7 +667,4 @@ if prompt_ind and _GEMINI_KEY:
 
 # Render final chat state into the reserved slot (above the input)
 with chat_placeholder:
-    st.markdown(
-        _render_chat_html(st.session_state[CHAT_KEY_IND], bool(_GEMINI_KEY)),
-        unsafe_allow_html=True,
-    )
+    st.html(_render_chat_html(st.session_state[CHAT_KEY_IND], bool(_GEMINI_KEY)))

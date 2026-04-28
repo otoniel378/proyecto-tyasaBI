@@ -69,11 +69,7 @@ st.markdown("""
     background: #16304E !important; color: #FFFFFF !important; border-color: #16304E !important;
 }
 
-/* ══════════════════════════════════════════════════════
-   TABS DE ÁREA Y MÓDULO — selector directo sobre .block-container
-   Esto aplica a TODOS los botones dentro de st.columns() en el
-   área principal. Es el único selector que funciona siempre.
-   ══════════════════════════════════════════════════════ */
+/* ══ TABS DE ÁREA Y MÓDULO ══ */
 .block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] {
     width: 100% !important;
 }
