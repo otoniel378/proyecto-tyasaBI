@@ -104,7 +104,6 @@ except Exception:
 construccion_info  = macro_data.get("construccion", {}) if isinstance(macro_data.get("construccion"), dict) else {}
 inflacion_info     = macro_data.get("inflacion",    {}) if isinstance(macro_data.get("inflacion"),    dict) else {}
 pib_info           = macro_data.get("pib",          {}) if isinstance(macro_data.get("pib"),          dict) else {}
-tiie_info          = macro_data.get("tiie",          {}) if isinstance(macro_data.get("tiie"),         dict) else {}
 usd_info           = macro_data.get("usd_mxn",      {}) if isinstance(macro_data.get("usd_mxn"),      dict) else {}
 comercio_info      = steel_data.get("comercio_exterior", {}) if isinstance(steel_data, dict) else {}
 
@@ -113,7 +112,6 @@ t_construccion = construccion_info.get("tendencia")    or 0
 v_inflacion    = inflacion_info.get("valor_actual")    or 0
 t_inflacion    = inflacion_info.get("tendencia")       or 0
 v_pib          = pib_info.get("valor_actual")          or 0
-v_tiie         = tiie_info.get("valor_actual")         or 0
 v_usd          = usd_info.get("valor_actual")          or 0
 balanza        = comercio_info.get("balanza_comercial_ton") or comercio_info.get("balanza_comercial") or 0
 
@@ -261,29 +259,6 @@ if v_pib:
 
     _bloque_gerencial("🏛️ PIB Nacional", sit, imp, esc, acc, color)
 
-# -- TASAS --
-if v_tiie:
-    if v_tiie > 9:
-        sit = f"TIIE en **{v_tiie:.2f}%** — tasa históricamente alta."
-        imp = "Crédito hipotecario y financiamiento de obra muy caro. Desarrolladores posponen proyectos."
-        esc = "Mientras la tasa no baje de 8%, el dinamismo en vivienda media y residencial seguirá deprimido."
-        acc = "Buscar clientes con financiamiento propio o con fondos públicos (INFONAVIT, FOVISSSTE)."
-        color = "#C62828"
-    elif v_tiie > 7:
-        sit = f"TIIE en **{v_tiie:.2f}%** — tasa elevada en proceso de normalización."
-        imp = "Crédito caro pero accesible para proyectos grandes. Impacto diferenciado por segmento."
-        esc = "Se esperan 2-3 recortes en 2026 → gradual reactivación de crédito para vivienda."
-        acc = "Mantener relación con clientes de infraestructura pública; resistencia mayor a tasa de mercado."
-        color = "#E65100"
-    else:
-        sit = f"TIIE en **{v_tiie:.2f}%** — tasa neutral o baja."
-        imp = "Crédito accesible, estímulo directo a construcción de vivienda y obra privada."
-        esc = "Ambiente favorable para recuperación de demanda en el mediano plazo."
-        acc = "Preparar oferta comercial para acompañar el repunte anticipado de proyectos."
-        color = "#2E7D32"
-
-    _bloque_gerencial("🏦 Tasa de Interés (TIIE)", sit, imp, esc, acc, color)
-
 # -- COMERCIO EXTERIOR --
 if balanza:
     if balanza < -500_000:
@@ -307,7 +282,7 @@ if balanza:
 
     _bloque_gerencial("⚖️ Comercio Exterior — Aceros Largos", sit, imp, esc, acc, color)
 
-if not any([v_construccion, v_inflacion, v_pib, v_tiie, balanza]):
+if not any([v_construccion, v_inflacion, v_pib, balanza]):
     st.info("Sin datos reales disponibles. Conectar BigQuery para obtener la lectura gerencial automática.")
 
 st.divider()
@@ -446,9 +421,6 @@ if v_inflacion and v_inflacion > 5:
 
 if balanza and balanza < -200_000:
     acciones.append(("🟡 Media prioridad", "Analizar precios de importación de varilla china. Confirmar que somos competitivos en calidad/servicio donde el precio difiere."))
-
-if v_tiie and v_tiie < 8:
-    acciones.append(("🟢 Oportunidad", "Tasa en baja favorece crédito. Contactar desarrolladores para anticipar recuperación de demanda hipotecaria."))
 
 if v_pib and v_pib > 2:
     acciones.append(("🟢 Oportunidad", "PIB en zona de crecimiento. Buscar licitaciones de obra pública o proyectos de infraestructura."))

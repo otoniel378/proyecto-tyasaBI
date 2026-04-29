@@ -112,3 +112,17 @@ def test_comercio_exterior_does_not_invent_usd_from_tons():
     assert "volumen_mensual_ton'] * 800" not in source
     assert "load_comercio_mock_data" not in source
     assert "K ton" in source
+
+
+def test_macroeconomia_does_not_render_tiie_without_reliable_source():
+    source = Path("pages/aceros_largos/02_macroeconomia.py").read_text(encoding="utf-8")
+
+    assert "TIIE" not in source
+    assert "tiie" not in source.lower()
+
+
+def test_usd_mxn_loader_filters_to_real_exchange_rate_range():
+    source = Path("aceros_largos/loaders_new_data.py").read_text(encoding="utf-8")
+
+    assert "SAFE_CAST(valor AS FLOAT64) BETWEEN 10 AND 30" in source
+    assert "4613" not in source

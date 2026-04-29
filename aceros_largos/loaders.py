@@ -195,17 +195,9 @@ def load_ticker_data() -> List[Dict[str, str]]:
                 "color": "white"
             })
 
-        if 'tiie' in kpis and kpis['tiie'].get('valor'):
-            ticker_items.append({
-                "label": "TIIE / Tasa",
-                "value": f"{kpis['tiie']['valor']:.2f}%",
-                "color": "secondary"
-            })
-
         # Completar con datos estáticos
         ticker_items.extend([
             {"label": "USD/MXN", "value": "$17.82", "color": "white"} if not any(t["label"] == "USD/MXN" for t in ticker_items) else None,
-            {"label": "Banxico Rate", "value": "7.00%", "color": "secondary"} if not any(t["label"] == "TIIE / Tasa" for t in ticker_items) else None,
             {"label": "Inv. Pública", "value": "$542 mil mdp", "color": "white"},
             {"label": "Arancel China", "value": "25-50%", "color": "tertiary"},
             {"label": "TYASA Laminador", "value": "$450 MDD inv.", "color": "secondary"},
@@ -236,7 +228,6 @@ def load_ticker_data() -> List[Dict[str, str]]:
                 "color": "tertiary" if construccion_trend['trend_type'] == 'down' else "secondary"
             },
             {"label": "USD/MXN", "value": "$17.82", "color": "white"},
-            {"label": "Banxico Rate", "value": "7.00%", "color": "secondary"},
             {"label": "Inv. Pública", "value": "$542 mil mdp", "color": "white"},
             {"label": "Arancel China", "value": "25-50%", "color": "tertiary"},
             {"label": "Expo MX→USA", "value": "-49%", "color": "tertiary"},
@@ -328,7 +319,7 @@ def load_macroeconomic_indicators() -> Dict[str, Any]:
 
         mercado_info = {}
         if not market_series.empty:
-            for serie in ['usd_mxn', 'tiie']:
+            for serie in ['usd_mxn']:
                 serie_df = market_series[market_series['serie'] == serie]
                 if not serie_df.empty:
                     serie_trend = calculate_trend(serie_df)
@@ -361,8 +352,7 @@ def load_macroeconomic_indicators() -> Dict[str, Any]:
             'construccion': construccion_info,
             'construccion_segmentada': construccion_segmentada.to_dict('records') if not construccion_segmentada.empty else [],
             'demanda_interna': demanda_info,
-            'usd_mxn': mercado_info.get('usd_mxn', {}),
-            'tiie': mercado_info.get('tiie', {})
+            'usd_mxn': mercado_info.get('usd_mxn', {})
         }
         
     except Exception as e:

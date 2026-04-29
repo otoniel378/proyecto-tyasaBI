@@ -253,7 +253,13 @@ def load_internal_demand_aceros_largos(limit_months: int = 24) -> pd.DataFrame:
 
 @st.cache_data(ttl=CACHE_TTL)
 def load_macro_market_series(limit_months: int = 24) -> pd.DataFrame:
-    """Carga series macro de mercado (USD/MXN y TIIE) desde variables curadas."""
+    """Carga USD/MXN desde variables curadas.
+
+    Importante: no inferir tipo de cambio con regex amplio sobre cualquier texto
+    que contenga "USD" o "MXN". La tabla de mercado incluye series financieras
+    con unidades distintas; mezclarlas produce valores imposibles.
+    Sólo se acepta una serie explícita de tipo de cambio y valores razonables.
+    """
     try:
         client = get_bq_client()
         ref = table_ref('gold_variables_mercado')
@@ -267,15 +273,15 @@ def load_macro_market_series(limit_months: int = 24) -> pd.DataFrame:
                 nombre,
                 categoria,
                 valor,
-                CASE
-                    WHEN REGEXP_CONTAINS(LOWER(CONCAT(COALESCE(ticker, ''), ' ', COALESCE(nombre, ''))), r'usd|mxn|tipo de cambio|d[oó]lar') THEN 'usd_mxn'
-                    WHEN REGEXP_CONTAINS(LOWER(CONCAT(COALESCE(ticker, ''), ' ', COALESCE(nombre, ''))), r'tiie|inter[eé]s|tasa') THEN 'tiie'
-                    ELSE NULL
-                END AS serie
+                'usd_mxn' AS serie
             FROM {ref}
             WHERE fecha >= DATE_SUB(CURRENT_DATE(), INTERVAL {limit_months} MONTH)
+              AND (
+                UPPER(COALESCE(ticker, '')) IN ('MXN=X', 'USDMXN=X')
+                OR REGEXP_CONTAINS(LOWER(COALESCE(nombre, '')), r'(usd/mxn|d[oó]lar.*peso|peso.*d[oó]lar|tipo de cambio)')
+              )
+              AND SAFE_CAST(valor AS FLOAT64) BETWEEN 10 AND 30
         )
-        WHERE serie IS NOT NULL
         ORDER BY fecha DESC
         """
 
@@ -721,9 +727,10 @@ def load_macro_kpis_summary() -> Dict[str, Any]:
                 'ultima_fecha': internal_demand_df.iloc[0]['fecha']
             }
 
-        # USD/MXN and TIIE KPIs (if available)
+        # USD/MXN KPI (if available). TIIE is intentionally excluded until a
+        # reliable Banxico source is loaded for this module.
         if not macro_market_df.empty:
-            for serie_key in ['usd_mxn', 'tiie']:
+            for serie_key in ['usd_mxn']:
                 serie_df = macro_market_df[macro_market_df['serie'] == serie_key]
                 if not serie_df.empty:
                     kpis[serie_key] = {

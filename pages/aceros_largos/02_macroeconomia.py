@@ -109,7 +109,6 @@ def _safe(key):
 construccion = _safe("construccion")
 inflacion    = _safe("inflacion")
 pib          = _safe("pib")
-tiie         = _safe("tiie")
 usd_mxn      = _safe("usd_mxn")
 
 
@@ -447,86 +446,21 @@ else:
 st.divider()
 
 # ---------------------------------------------------------------------------
-# SECCIÓN 4: TASA DE INTERÉS
+# SECCIÓN 4: USD/MXN
 # ---------------------------------------------------------------------------
 
-st.subheader("🏦 4. Tasa de Interés (TIIE) — ¿el crédito está caro o barato?")
-st.caption("La tasa afecta directamente el costo del crédito hipotecario y el financiamiento de proyectos de construcción.")
-
-v_tiie = tiie.get("valor_actual") or 0
-t_tiie = tiie.get("tendencia") or 0
-
-if v_tiie:
-    if v_tiie > 10:
-        sit = f"TIIE en {v_tiie:.2f}% — tasa históricamente alta."
-        imp = "Crédito hipotecario muy caro. Desarrolladores no inician proyectos. Demanda de varilla deprimida."
-        acc = "Enfocar esfuerzo comercial en clientes con financiamiento propio o fondos gubernamentales (INFONAVIT, infraestructura pública)."
-        color = "#C62828"
-    elif v_tiie > 8:
-        sit = f"TIIE en {v_tiie:.2f}% — tasa elevada, pero en proceso de baja."
-        imp = "Crédito caro pero accesible para grandes proyectos. Vivienda media y social más afectada."
-        acc = "Segmentar: priorizar clientes de obra pública y proyectos pre-financiados."
-        color = "#E65100"
-    elif v_tiie > 6:
-        sit = f"TIIE en {v_tiie:.2f}% — tasa en zona neutral."
-        imp = "Crédito accesible. Condiciones para que desarrolladores retomen proyectos pausados."
-        acc = "Activar propuestas comerciales con desarrolladores medianos. Señal de recuperación próxima."
-        color = "#FDD835"
-    else:
-        sit = f"TIIE en {v_tiie:.2f}% — tasa baja, crédito económico."
-        imp = "Estímulo directo a construcción. Mayor demanda de financiamiento hipotecario y de obra."
-        acc = "Preparar disponibilidad de producto. La demanda puede repuntar rápidamente."
-        color = "#2E7D32"
-
-    col_t, col_g = st.columns([1, 2])
-    with col_t:
-        _tarjeta_indicador(
-            titulo=f"🏦 TIIE: {v_tiie:.2f}%",
-            valor_str=f"{v_tiie:.2f}%",
-            tendencia_str=f"{t_tiie:+.2f}% vs mes anterior",
-            situacion=sit,
-            impacto=imp,
-            accion=acc,
-            color=color,
-            ayuda="Fuente: Banco de México"
-        )
-        fig_gauge_t = chart_gauge_simple(
-            valor=v_tiie, titulo="TIIE actual",
-            rango_min=4, rango_max=15,
-            umbral_rojo=10, umbral_amarillo=7,
-            unidad="%"
-        )
-        st.plotly_chart(fig_gauge_t, use_container_width=True)
-    with col_g:
-        x_tiie, y_tiie = _prep_serie(tiie, periodo_meses)
-        if x_tiie:
-            # Área: cuando tasa baja es bueno → color_positivo=True
-            fig_tiie = chart_area_tendencia(
-                x=x_tiie, y=y_tiie,
-                titulo="Tasa TIIE — evolución mensual (baja = mejor para construcción)",
-                yaxis_title="%",
-                color_positivo=True,
-                height=270,
-                unidad="%",
-            )
-            if fig_tiie:
-                st.plotly_chart(fig_tiie, use_container_width=True)
-        else:
-            st.info("Sin serie histórica disponible.")
-else:
-    st.info("Sin datos de TIIE disponibles.")
-
-st.divider()
-
-# ---------------------------------------------------------------------------
-# SECCIÓN 5: USD/MXN
-# ---------------------------------------------------------------------------
-
-st.subheader("💱 5. Tipo de Cambio USD/MXN — ¿cuánto cuesta el acero importado?")
+st.subheader("💱 4. Tipo de Cambio USD/MXN — ¿cuánto cuesta el acero importado?")
 st.caption("El peso débil encarece las importaciones de acero; el peso fuerte las abarata y aumenta la competencia.")
 
 v_usd = usd_mxn.get("valor_actual") or 0
 t_usd = usd_mxn.get("tendencia") or 0
+
+# Protección adicional de UI: si la fuente trae un valor fuera de rango, no
+# mostrarlo. USD/MXN real debe estar en pesos por dólar, no índices u otras
+# variables financieras.
+if v_usd and not (10 <= float(v_usd) <= 30):
+    v_usd = 0
+    t_usd = 0
 
 if v_usd:
     if v_usd > 20:
@@ -648,7 +582,7 @@ with col_a:
         <div style="font-size:15px; font-weight:700; color:#C62828; margin-bottom:8px;">🔴 Escenario Adverso</div>
         <ul style="margin:0; padding-left:18px; font-size:13px; color:#333;">
             <li>Construcción sigue cayendo más de 10%</li>
-            <li>Tasa sin recortes en 2026</li>
+            <li>Crédito de construcción sigue restringido</li>
             <li>Inversión pública se retrasa</li>
         </ul>
         <div style="margin-top:10px; font-size:13px; font-weight:600; color:#C62828;">
@@ -666,7 +600,7 @@ with col_b:
         <div style="font-size:15px; font-weight:700; color:#E65100; margin-bottom:8px;">🟡 Escenario Base</div>
         <ul style="margin:0; padding-left:18px; font-size:13px; color:#333;">
             <li>Construcción estabiliza entre -5% y 0%</li>
-            <li>1-2 recortes de tasa en el año</li>
+            <li>Financiamiento de obra mejora gradualmente</li>
             <li>Inversión pública moderada</li>
         </ul>
         <div style="margin-top:10px; font-size:13px; font-weight:600; color:#E65100;">
@@ -684,7 +618,7 @@ with col_c:
         <div style="font-size:15px; font-weight:700; color:#2E7D32; margin-bottom:8px;">🟢 Escenario Positivo</div>
         <ul style="margin:0; padding-left:18px; font-size:13px; color:#333;">
             <li>Gasto público activa obras en Q2</li>
-            <li>Tasa baja a <8% antes de junio</li>
+            <li>Crédito hipotecario y de obra se reactiva</li>
             <li>Construcción vuelve a terreno positivo</li>
         </ul>
         <div style="margin-top:10px; font-size:13px; font-weight:600; color:#2E7D32;">
@@ -732,10 +666,6 @@ for indicador, info in macro_data.items():
         if v < 0:
             alertas.append(f"🔴 **PIB negativo** ({v:.1f}%) — economía en contracción.")
             recomendaciones.append("Posición defensiva. Control de cartera y crédito.")
-    elif indicador == "tiie":
-        if v > 10:
-            alertas.append(f"🔴 **Tasa TIIE muy alta** ({v:.2f}%) — crédito caro, construcción deprimida.")
-            recomendaciones.append("Enfocarse en clientes con financiamiento propio o público.")
     elif indicador == "usd_mxn":
         if v and v < 17:
             alertas.append(f"🟡 **Peso fuerte** (${v:.2f}) — acero importado barato, mayor competencia.")
