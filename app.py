@@ -255,7 +255,8 @@ PAGINAS = {
     ("aceros_planos", "negros", "apn_seg"): "pages.ap_negros.02_segmentacion",
     ("aceros_planos", "negros", "apn_series"): "pages.ap_negros.03_series_tiempo",
     ("aceros_planos", "negros", "apn_forecast"): "pages.ap_negros.04_forecasting",
-    ("aceros_planos", "negros", "apn_mix"): "pages.ap_negros.05_mix_productos",
+    ("aceros_planos", "negros", "apn_mix"):   "pages.ap_negros.05_mix_productos",
+    ("aceros_planos", "negros", "apn_intel"): "pages.ap_negros.06_inteligencia_clientes",
     
     # ACEROS PLANOS - Galvanizados
     ("aceros_planos", "galvanizados", "coming"): "pages.ap_galvanizados.coming_soon",
@@ -345,11 +346,12 @@ elif seccion == "mercado":
 # ---------------------------------------------------------------------------
 if seccion == "aceros_planos" and subseccion == "negros":
     MODULOS_NEGROS = {
-        "apn_resumen": ("📈", "Resumen Ejecutivo"),
-        "apn_seg": ("👥", "Segmentación"),
-        "apn_series": ("📉", "Series de Tiempo"),
-        "apn_forecast": ("🔮", "Pronóstico"),
-        "apn_mix": ("🎯", "Mix de Productos"),
+        "apn_resumen": ("📊", "Resumen"),
+        "apn_seg":     ("👥", "Segmentación"),
+        "apn_series":  ("📈", "Series"),
+        "apn_forecast":("🔮", "Pronóstico"),
+        "apn_mix":     ("🎯", "Mix"),
+        "apn_intel":   ("🧠", "Intel. Clientes"),
     }
 
     st.markdown('<div id="module-tabs-marker" style="display:none"></div>', unsafe_allow_html=True)

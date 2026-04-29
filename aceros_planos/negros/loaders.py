@@ -230,3 +230,25 @@ def get_catalogo_anios() -> list[int]:
     if df.empty or "ANIO" not in df.columns:
         return []
     return sorted(df["ANIO"].dropna().unique().astype(int).tolist(), reverse=True)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_transacciones_cliente(cliente: str) -> pd.DataFrame:
+    """Todas las transacciones históricas de un cliente — base para Inteligencia de Clientes."""
+    c = cliente.replace("'", "\\'")
+    sql = f"""
+        SELECT FECHAEMB, PRODUCTO_ORIGINAL, PROCESO,
+               PESO_TON, ANIO, MES, PERIODO
+        FROM {T_SILVER}
+        WHERE AREA = '{AREA_FILTER}' AND CLIENTE = '{c}'
+        ORDER BY FECHAEMB
+    """
+    df = run_query(sql)
+    if df.empty:
+        return df
+    df["FECHAEMB"] = pd.to_datetime(df["FECHAEMB"], errors="coerce")
+    df["PERIODO"]  = pd.to_datetime(df["PERIODO"],  errors="coerce")
+    df["PESO_TON"] = pd.to_numeric(df["PESO_TON"],  errors="coerce").fillna(0)
+    df["ANIO"]     = pd.to_numeric(df["ANIO"],       errors="coerce").fillna(0).astype(int)
+    df["MES"]      = pd.to_numeric(df["MES"],        errors="coerce").fillna(0).astype(int)
+    return df

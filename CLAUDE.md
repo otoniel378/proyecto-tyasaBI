@@ -91,37 +91,46 @@ cloud_functions/
 6. Cada página nueva tiene sidebar_header() + st.spinner() en carga de datos
 7. Caché de análisis IA en JSON — nunca llamar Gemini si ya existe la respuesta
 
-## Patrón obligatorio para llamadas IA con botón (2026-04-28, corregido 2026-04-28)
-NUNCA usar st.rerun() en páginas con IA — causa NotFoundError removeChild en React.
-NUNCA usar st.spinner() + st.rerun() — mismo problema.
-Patrón correcto (sin rerun, sin spinner):
+## Patrón obligatorio para HTML dinámico (FIX DEFINITIVO 2026-04-28)
+
+USAR st.html() para cualquier HTML grande o dinámico. NUNCA st.markdown(unsafe_allow_html=True) para contenido que cambia entre renders — React intenta reconciliar los nodos DOM internos y falla con removeChild.
+
+```python
+# ✅ CORRECTO — nodo opaco, React no reconcilia
+st.html(render_fn(st.session_state.get(key)))
+
+# ❌ INCORRECTO — removeChild si el HTML cambia
+st.markdown(render_fn(st.session_state.get(key)), unsafe_allow_html=True)
+
+# ✅ OK — HTML estático que nunca cambia
+st.markdown("<div style='padding-top:22px;'></div>", unsafe_allow_html=True)
+```
+
+## Patrón obligatorio para llamadas IA con botón (FIX DEFINITIVO 2026-04-28)
+Sin spinner, sin rerun, con st.html() para el resultado:
 ```python
 if run and _GEMINI_KEY:
-    result = ai_call(...)          # bloquea; Streamlit muestra "Running..."
-    st.session_state[key] = result
-# SIN st.rerun()
-st.markdown(render_fn(st.session_state.get(key)), unsafe_allow_html=True)
+    st.session_state[key] = ai_call(...)   # bloqueante; Streamlit muestra "Running..."
+# NO st.rerun(), NO st.spinner()
+st.html(render_fn(st.session_state.get(key)))
 ```
-Para chat: usar st.container() para out-of-order rendering — procesar mensaje ANTES de renderizar el HTML del chat, sin st.rerun().
+Para chat: st.container() + procesar mensaje ANTES de renderizar, sin st.rerun().
+Para controles con date_input: st.form(border=False) + st.form_submit_button().
 
-## CSS para pill tabs en app.py (corregido 2026-04-28)
-NUNCA usar el selector broad .block-container — aplica a TODOS los widgets de todas
-las páginas y causa removeChild en React cuando hay date_input u otros widgets complejos.
+## CSS para pill tabs en app.py (2026-04-28)
+El selector broad .block-container ES el correcto para tabs. NO intentar :has() para height/flex — solo funciona para colores. El removeChild NO era del CSS, era de st.markdown con HTML dinámico.
 
-El selector CORRECTO usa :has(#marker) + stHorizontalBlock (stVerticalBlock como anchor):
 ```css
-[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
-  [data-testid="stButton"] > button {
+/* Area tabs 72px */
+.block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button {
     height: 72px !important; border-radius: 50px !important;
 }
-[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
+/* Module tabs override 60px */
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
   [data-testid="stButton"] > button {
-    height: 60px !important; border-radius: 50px !important;
+    height: 60px !important;
 }
 ```
-stVerticalBlock:has(#marker) ES el sibling directo de stHorizontalBlock → + funciona.
-stMarkdownContainer:has(#marker) NO ES sibling directo → + falla. 
-height funciona; padding es ignorado.
 
 ## Notas de sesiones
 Las notas de cada sesión se guardan en:

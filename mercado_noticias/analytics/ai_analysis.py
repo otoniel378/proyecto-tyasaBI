@@ -442,3 +442,211 @@ def sintesis_industrial(
         "_cached": False,
         "_error":  "Gemini no respondió o la respuesta no pudo ser parseada.",
     }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ANÁLISIS DE INDICADORES INEGI
+# ════════════════════════════════════════════════════════════════════════════
+
+_INEGI_SYSTEM = (
+    "Eres analista macroeconómico senior para TYASA, acería mexicana de acero plano "
+    "vía horno eléctrico de arco (EAF). Tu cliente es el equipo directivo. "
+    "Responde en español técnico y ejecutivo. Sé preciso y conciso."
+)
+
+_INEGI_TMPL = """## Indicador INEGI bajo análisis
+**{label}** — Grupo: {group_label}
+*{group_desc}*
+
+## Estado actual
+- Nivel de alerta Z-score: **{alerta}** (z = {z_score:+.2f}σ)
+- Valor más reciente: {ult_valor}
+- Variación mensual (MoM): {var_mom}
+- Variación anual (YoY): {var_yoy}
+- Media 24 meses: {media}
+
+## Últimos 12 meses (fecha: valor)
+{tabla}
+
+---
+Genera un análisis ejecutivo en 3 párrafos breves (sin encabezados markdown):
+
+1. Qué está pasando — interpreta el movimiento en contexto macroeconómico mexicano
+2. Impacto en TYASA — efecto concreto sobre demanda de acero, precios de insumos o competitividad
+3. Señales a vigilar — qué monitorear en los próximos 2-3 meses
+
+Máximo 180 palabras totales. Párrafos directos separados por salto de línea doble."""
+
+
+def _fmt_num_inegi(v) -> str:
+    try:
+        f = float(v)
+        if abs(f) >= 1_000_000:
+            return f"{f/1_000_000:.2f}M"
+        if abs(f) >= 1_000:
+            return f"{f:,.0f}"
+        return f"{f:.2f}"
+    except Exception:
+        return "—"
+
+
+def analizar_indicador_inegi(
+    clave: str,
+    label: str,
+    group_label: str,
+    group_desc: str,
+    alerta: str,
+    z_score: float,
+    ult_valor,
+    var_mom,
+    var_yoy,
+    media,
+    valores_recientes: list,
+    api_key: str,
+    force_refresh: bool = False,
+) -> dict:
+    """
+    Análisis IA de un indicador INEGI con contexto TYASA.
+    Retorna dict: analisis (str), _cached (bool), _error (str|None).
+    """
+    if not api_key:
+        return {"analisis": "", "_cached": False, "_error": "Sin API key de Gemini"}
+
+    hoy  = date.today().isoformat()
+    ckey = hashlib.md5(f"inegi|{clave}|{hoy}".encode()).hexdigest()[:16]
+
+    cached = _cache_load(ckey)
+    if cached and not force_refresh:
+        cached["_cached"] = True
+        return cached
+
+    tabla_lines = [
+        f"  {str(f)[:7]}: {_fmt_num_inegi(v)}"
+        for f, v in (valores_recientes or [])[-12:]
+    ]
+    tabla = "\n".join(tabla_lines) if tabla_lines else "  (sin datos)"
+
+    def _pct(v):
+        try:
+            return f"{float(v):+.1f}%"
+        except Exception:
+            return "—"
+
+    prompt = _INEGI_TMPL.format(
+        label       = label,
+        group_label = group_label,
+        group_desc  = group_desc,
+        alerta      = alerta,
+        z_score     = (lambda v: v if v == v else 0.0)(float(z_score) if z_score is not None else 0.0),
+        ult_valor   = _fmt_num_inegi(ult_valor),
+        var_mom     = _pct(var_mom),
+        var_yoy     = _pct(var_yoy),
+        media       = _fmt_num_inegi(media),
+        tabla       = tabla,
+    )
+
+    text = _call_gemini_text(prompt, api_key, system=_INEGI_SYSTEM)
+    resultado = {"analisis": text, "_cached": False, "_error": None}
+    _cache_save(ckey, resultado)
+    return resultado
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# BRIEFING DE VISITA — INTELIGENCIA DE CLIENTES
+# ════════════════════════════════════════════════════════════════════════════
+
+_BRIEF_SYSTEM = (
+    "Eres analista comercial senior de TYASA, acería mexicana de acero plano (EAF). "
+    "Tu misión: armar un briefing de visita ejecutivo y accionable para el equipo de ventas. "
+    "Responde en español. Directo, sin fluff."
+)
+
+_BRIEF_TMPL = """# Briefing de visita — {cliente}
+
+## Perfil
+- Clase ABC: **{clase}** | División: {division} | Antigüedad: {antiguedad}
+- Estado de actividad: **{estado}** ({dias} días sin pedido)
+- Predicción próximo pedido: {pred_prox}
+- Productos activos: {n_prods}
+
+## Rendimiento reciente
+- Prom. mensual últimos 3 meses: {avg_3m:.1f} ton
+- Mismo período año anterior: {avg_3m_yoy:.1f} ton
+- Variación interanual: {var_yoy}
+- Tendencia 6 meses: {tendencia}
+
+## Mix de productos principales
+{lista_prods}
+
+## Estacionalidad histórica
+- Mes de mayor compra: {mes_peak}
+- Mes con menor compra: {mes_low}
+- Mes actual: {mes_actual}
+
+---
+Genera exactamente 4-5 bullets de acción para el vendedor antes de la visita.
+Cada bullet: emoji relevante (💼 📦 📈 ⚠️ 💡 🎯 🔄) + máximo 25 palabras.
+Foco: recuperar si inactivo, expandir mix si activo, anticipar estacionalidad, cross-sell, riesgo.
+Sin introducción ni cierre — solo los bullets, uno por línea."""
+
+
+def generar_briefing_cliente(
+    cliente: str,
+    clase: str,
+    division: str,
+    antiguedad: str,
+    estado: str,
+    dias: int,
+    pred_prox: str,
+    n_prods: int,
+    avg_3m: float,
+    avg_3m_yoy: float,
+    tendencia: str,
+    lista_prods: str,
+    mes_peak: str,
+    mes_low: str,
+    mes_actual: str,
+    api_key: str,
+    force_refresh: bool = False,
+) -> dict:
+    """Genera un briefing de visita comercial para un cliente con IA."""
+    if not api_key:
+        return {"briefing": "", "_cached": False, "_error": "Sin API key de Gemini"}
+
+    hoy  = date.today().isoformat()
+    ckey = hashlib.md5(f"brief|{cliente}|{hoy}".encode()).hexdigest()[:16]
+
+    cached = _cache_load(ckey)
+    if cached and not force_refresh:
+        cached["_cached"] = True
+        return cached
+
+    try:
+        v = float(avg_3m_yoy)
+        var_yoy_str = f"{(avg_3m - v) / v * 100:+.1f}%" if v != 0 else "—"
+    except Exception:
+        var_yoy_str = "—"
+
+    prompt = _BRIEF_TMPL.format(
+        cliente    = cliente,
+        clase      = clase,
+        division   = division,
+        antiguedad = antiguedad,
+        estado     = estado,
+        dias       = dias,
+        pred_prox  = pred_prox,
+        n_prods    = n_prods,
+        avg_3m     = avg_3m,
+        avg_3m_yoy = avg_3m_yoy,
+        var_yoy    = var_yoy_str,
+        tendencia  = tendencia,
+        lista_prods = lista_prods,
+        mes_peak   = mes_peak,
+        mes_low    = mes_low,
+        mes_actual  = mes_actual,
+    )
+
+    text     = _call_gemini_text(prompt, api_key, system=_BRIEF_SYSTEM)
+    resultado = {"briefing": text, "_cached": False, "_error": None}
+    _cache_save(ckey, resultado)
+    return resultado
