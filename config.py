@@ -28,9 +28,15 @@ AREAS = {
     },
     "aceros_largos": {
         "nombre": "Aceros Largos",
-        "icono":  "📏",
-        "responsable": "Por definir",
-        "subsecciones": {},
+        "icono":  "📏", 
+        "responsable": "Equipo BI Externo",
+        "subsecciones": {
+            "dashboard":    {"nombre": "Dashboard Ejecutivo",     "status": "activo",       "icono": "📊"},
+            "macro":        {"nombre": "Macroeconomía",          "status": "activo",       "icono": "🏦"},
+            "mercado":      {"nombre": "Mercado y Costos",       "status": "activo",       "icono": "💹"},
+            "sectores":     {"nombre": "Sectores Productivos",   "status": "activo",       "icono": "🏭"},
+            "comercio":     {"nombre": "Comercio Exterior",      "status": "activo",       "icono": "🌍"},
+        },
     },
     "aceros_sbq": {
         "nombre": "Aceros SBQ",

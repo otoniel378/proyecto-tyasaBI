@@ -1,4 +1,4 @@
-"""
+﻿"""
 app.py — Hub principal de TYASA BI.
 Navegación: sidebar principal + subsecciones en área de contenido.
 """
@@ -46,7 +46,7 @@ if os.path.exists(css_path):
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-/* ══ SIDEBAR — Nav pills ══ */
+/* SIDEBAR — Nav pills */
 [data-testid="stSidebar"] .stButton > button {
     background: #F1F5F9 !important; color: #475569 !important;
     border: 1.5px solid #DDE3EC !important; border-radius: 10px !important;
@@ -69,23 +69,27 @@ st.markdown("""
     background: #16304E !important; color: #FFFFFF !important; border-color: #16304E !important;
 }
 
-/* ══ TABS DE ÁREA Y MÓDULO ══ */
-.block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] {
+/* TABS DE ÁREA Y MÓDULO
+   Importante: NO usar .block-container [data-testid="stHorizontalBlock"] global.
+   Ese selector afecta todos los st.columns() de las páginas y rompe dashboards.
+   Se limita a los bloques inmediatamente asociados a los markers de navegación. */
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stButton"],
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stButton"] {
     width: 100% !important;
 }
-.block-container [data-testid="stHorizontalBlock"] [data-testid="stColumn"] > div {
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stColumn"] > div,
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stColumn"] > div {
     width: 100% !important;
 }
-.block-container [data-testid="stHorizontalBlock"] [data-testid="stColumn"] {
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stColumn"],
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stColumn"] {
     display: flex !important; justify-content: center !important;
     align-items: center !important; padding: 5px 10px !important;
 }
-.block-container [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button {
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button,
+[data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button {
     width: 100% !important;
-    height: 72px !important;
-    min-height: 72px !important;
     border-radius: 50px !important;
-    font-size: 1.05rem !important;
     font-weight: 700 !important;
     letter-spacing: 0.025em !important;
     border-width: 2.5px !important;
@@ -96,7 +100,13 @@ st.markdown("""
     line-height: 1 !important;
 }
 
-/* ══ COLORES — Área tabs — usar SOLO + para no afectar módulos ══ */
+[data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"] [data-testid="stButton"] > button {
+    height: 72px !important;
+    min-height: 72px !important;
+    font-size: 1.05rem !important;
+}
+
+/* COLORES — Área tabs — usar SOLO + para no afectar módulos */
 [data-testid="stVerticalBlock"]:has(#area-tabs-marker) + [data-testid="stHorizontalBlock"]
   > [data-testid="stColumn"]:nth-child(1) button[kind="secondary"] {
     background: #EFF6FF !important; color: #1E40AF !important; border-color: #BFDBFE !important;
@@ -125,7 +135,7 @@ st.markdown("""
     box-shadow: 0 6px 20px rgba(217,119,6,0.45) !important;
 }
 
-/* ══ COLORES — Module tabs (module-tabs-marker) ══ */
+/* COLORES — Module tabs (module-tabs-marker) */
 [data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
   button[kind="secondary"],
 [data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
@@ -153,7 +163,7 @@ st.markdown("""
     background: #16304E !important; transform: translateY(-2px) !important;
 }
 
-/* ══ Reducir altura para módulos (5 botones, más compactos) ══ */
+/* Reducir altura para módulos (5 botones, más compactos) */
 [data-testid="stVerticalBlock"]:has(#module-tabs-marker) ~ [data-testid="stHorizontalBlock"]
   [data-testid="stButton"] > button,
 [data-testid="stVerticalBlock"]:has(#module-tabs-marker) + [data-testid="stHorizontalBlock"]
@@ -219,11 +229,10 @@ SUBSECCIONES = {
         "formados": ("🔧", "Aceros Formados"),
     },
     "aceros_largos": {
-        "al_resumen": ("📊", "Resumen Ejecutivo"),
+        "al_resumen": ("📊", "Dashboard Ejecutivo"),
         "al_macro": ("🏦", "Macroeconomía"),
-        "al_mercado": ("💹", "Mercado y Costos"),
-        "al_operaciones": ("⚙️", "Operaciones"),
-        "al_calidad": ("✅", "Calidad"),
+        "al_sectores": ("🏭", "Sectores Productivos"),
+        "al_comercio": ("🌍", "Comercio Exterior"),
     },
     "aceros_sbq": {
         "sbq_soon": ("⏳", "Próximamente"),
@@ -232,7 +241,7 @@ SUBSECCIONES = {
         "mkt_monitor": ("📡", "Monitor de Quiebres"),
         "mkt_vars": ("🌐", "Variables Globales"),
         "mkt_industria": ("🏭", "Monitor Siderúrgico"),
-        "mkt_inegi": ("📊", "Indicadores INEGI"),
+        "mkt_inegi": ("📈", "Indicadores INEGI"),
     }
 }
 
@@ -257,9 +266,8 @@ PAGINAS = {
     # ACEROS LARGOS
     "al_resumen": "pages.aceros_largos.01_resumen",
     "al_macro": "pages.aceros_largos.02_macroeconomia",
-    "al_mercado": "pages.aceros_largos.03_mercado",
-    "al_operaciones": "pages.aceros_largos.04_operaciones",
-    "al_calidad": "pages.aceros_largos.05_calidad",
+    "al_sectores": "pages.aceros_largos.04_sectores_productivos",
+    "al_comercio": "pages.aceros_largos.05_comercio_exterior",
     
     # ACEROS SBQ
     "sbq_soon": "pages.aceros_sbq.coming_soon",
@@ -337,9 +345,9 @@ elif seccion == "mercado":
 # ---------------------------------------------------------------------------
 if seccion == "aceros_planos" and subseccion == "negros":
     MODULOS_NEGROS = {
-        "apn_resumen": ("📊", "Resumen Ejecutivo"),
+        "apn_resumen": ("📈", "Resumen Ejecutivo"),
         "apn_seg": ("👥", "Segmentación"),
-        "apn_series": ("📈", "Series de Tiempo"),
+        "apn_series": ("📉", "Series de Tiempo"),
         "apn_forecast": ("🔮", "Pronóstico"),
         "apn_mix": ("🎯", "Mix de Productos"),
     }

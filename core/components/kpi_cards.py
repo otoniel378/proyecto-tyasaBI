@@ -1,17 +1,24 @@
 """
-kpi_cards.py - Tarjetas KPI prominentes estilo dashboard Power BI.
+kpi_cards.py — Tarjetas KPI ejecutivas reutilizables.
+Renderiza metricas con formato corporativo TYASA.
+Compartido entre todas las areas.
 """
 
 import streamlit as st
+from typing import Union, Optional
 from config import COLORS
 
-_ACCENTS = ["#1B3A5C", "#2563EB", "#059669", "#D97706", "#7C3AED", "#DC2626"]
 
-
-def kpi_card(label, value, delta=None, delta_label="", icon="", suffix="", prefix="",
-             help_text=None, accent_color=None):
-    accent = accent_color or COLORS["primary"]
-
+def kpi_card(
+    label: str,
+    value: Union[str, float, int],
+    delta: Optional[Union[str, float]] = None,
+    delta_label: str = "",
+    icon: str = "",
+    suffix: str = "",
+    prefix: str = "",
+    help_text: Optional[str] = None,
+) -> None:
     if isinstance(value, float):
         value_str = f"{prefix}{value:,.1f}{suffix}"
     elif isinstance(value, int):
@@ -23,42 +30,44 @@ def kpi_card(label, value, delta=None, delta_label="", icon="", suffix="", prefi
     if delta is not None:
         try:
             delta_num = float(delta)
-            up = delta_num >= 0
-            color = "#059669" if up else "#DC2626"
-            bg    = "#ECFDF5" if up else "#FEF2F2"
-            arrow = "▲" if up else "▼"
+            color = COLORS["success"] if delta_num >= 0 else COLORS["danger"]
+            arrow = "▲" if delta_num >= 0 else "▼"
             delta_html = (
-                f'<div style="display:flex;align-items:center;gap:6px;margin-top:6px;">'
-                f'<span style="color:{color};background:{bg};font-size:0.68rem;font-weight:700;'
-                f'padding:2px 7px;border-radius:20px;">{arrow} {abs(delta_num):.1f}%</span>'
-                f'<span style="color:#94A3B8;font-size:0.68rem;">{delta_label}</span>'
-                f'</div>'
+                f"<span style='color:{color};font-size:0.82rem;font-weight:600;'>"
+                f"{arrow} {abs(delta_num):.1f}%"
+                f"</span>"
+                f"<span style='color:{COLORS['text_light']};font-size:0.78rem;'> {delta_label}</span>"
             )
         except (TypeError, ValueError):
-            delta_html = f'<div style="color:#94A3B8;font-size:0.68rem;margin-top:3px;">{delta}</div>'
+            delta_html = f"<span style='color:{COLORS['neutral']};font-size:0.82rem;'>{delta}</span>"
 
     help_attr = f'title="{help_text}"' if help_text else ""
 
     st.markdown(
         f"""
-        <div {help_attr} style="
-            background:#FFFFFF;
-            border:1.5px solid #DDE3EC;
-            border-top:4px solid {accent};
+        <div {help_attr} style='
+            background:{COLORS["surface"]};
+            border:1px solid #E5E7EB;
+            border-left:4px solid {COLORS["primary"]};
             border-radius:8px;
-            padding:14px 16px 12px;
-            box-shadow:0 2px 8px rgba(15,23,42,0.08), 0 1px 3px rgba(15,23,42,0.04);
-            transition:box-shadow 0.2s ease, transform 0.15s ease;
-            cursor:default;
-        ">
-            <div style="color:#64748B;font-size:0.62rem;font-weight:700;
-                        text-transform:uppercase;letter-spacing:0.09em;margin-bottom:5px;">
-                {(icon + '  ') if icon else ''}{label}
-            </div>
-            <div style="color:#0F172A;font-size:1.55rem;font-weight:700;
-                        line-height:1.1;font-family:'Segoe UI',sans-serif;letter-spacing:-0.01em;">
-                {value_str}
-            </div>
+            padding:16px 20px;
+            margin-bottom:8px;
+        '>
+            <div style='
+                color:{COLORS["text_light"]};
+                font-size:0.78rem;
+                font-weight:600;
+                text-transform:uppercase;
+                letter-spacing:0.05em;
+                margin-bottom:4px;
+            '>{icon} {label}</div>
+            <div style='
+                color:{COLORS["primary"]};
+                font-size:1.8rem;
+                font-weight:700;
+                line-height:1.2;
+                margin-bottom:4px;
+            '>{value_str}</div>
             {delta_html}
         </div>
         """,
@@ -66,9 +75,9 @@ def kpi_card(label, value, delta=None, delta_label="", icon="", suffix="", prefi
     )
 
 
-def render_kpi_row(kpis):
+def render_kpi_row(kpis: list) -> None:
     cols = st.columns(len(kpis))
-    for i, (col, kpi) in enumerate(zip(cols, kpis)):
+    for col, kpi in zip(cols, kpis):
         with col:
             kpi_card(
                 label=kpi.get("label", ""),
@@ -79,21 +88,18 @@ def render_kpi_row(kpis):
                 suffix=kpi.get("suffix", ""),
                 prefix=kpi.get("prefix", ""),
                 help_text=kpi.get("help_text"),
-                accent_color=kpi.get("accent_color", _ACCENTS[i % len(_ACCENTS)]),
             )
 
 
-def seccion_titulo(titulo, subtitulo=""):
-    sub_html = (
-        f'<span style="color:#94A3B8;font-size:0.72rem;font-weight:400;margin-left:8px;">'
-        f'{subtitulo}</span>'
-        if subtitulo else ""
-    )
+def seccion_titulo(titulo: str, subtitulo: str = "") -> None:
     st.markdown(
-        f'<div style="display:flex;align-items:baseline;gap:4px;'
-        f'margin:12px 0 6px;padding-bottom:6px;border-bottom:1.5px solid #DDE3EC;">'
-        f'<span style="color:#1B3A5C;font-size:0.72rem;font-weight:700;'
-        f'text-transform:uppercase;letter-spacing:0.08em;">{titulo}</span>'
-        f'{sub_html}</div>',
+        f"""
+        <div style='margin:24px 0 12px 0;'>
+            <h3 style='color:{COLORS["primary"]};margin:0;font-size:1.15rem;'>
+                {titulo}
+            </h3>
+            {"<p style='color:" + COLORS["text_light"] + ";font-size:0.85rem;margin:2px 0 0 0;'>" + subtitulo + "</p>" if subtitulo else ""}
+        </div>
+        """,
         unsafe_allow_html=True,
     )
