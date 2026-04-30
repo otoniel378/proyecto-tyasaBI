@@ -10,70 +10,70 @@ T_INDICADORES = table_ref("gold_indicadores_inegi")
 
 # ── Catálogo de indicadores ──────────────────────────────────────────────────
 INDICADORES_CONFIG = {
-    # IMAI
-    "736414": "IMAI_Construccion_Total",
-    "736476": "IMAI_MetalicasBasicas_331",
-    "736475": "IMAI_HierroAcero_3311",
-    "736481": "IMAI_ProductosMetalicos_332",
-    "736491": "IMAI_MaquinariaEquipo_333",
-    "736418": "IMAI_Manufactureras_Total",
-    "736407": "IMAI_ActividadIndustrial_Total",
-    "736526": "IMAI_EquipoTransporte_336",
-    "736594": "IMAI_Construccion_2",
-    "736533": "IMAI_MetalicasBasicas_2",
-    # EMIM
+    # ── ACTIVIDAD INDUSTRIAL (IMAI) ───────────────────────────────────────────
+    "736407": "IMAI_ActividadIndustrial_Indice",
+    "736418": "IMAI_Manufactureras_Indice",
+    "736414": "IMAI_Construccion_Indice",
+    "736475": "IMAI_MetalicasBasicas_331_Indice",
+    "736476": "IMAI_HierroAcero_3311_Indice",
+    "736481": "IMAI_ProductosMetalicos_332_Indice",
+    "736491": "IMAI_MaquinariaEquipo_333_Indice",
+    "736526": "IMAI_ActividadIndustrial_VarAnual",
+    "736533": "IMAI_Construccion_VarAnual",
+    "736594": "IMAI_MetalicasBasicas_331_VarAnual",
+    # ── EMIM ─────────────────────────────────────────────────────────────────
     "910468": "EMIM_VolFisico_Desest_Indice",
     "910470": "EMIM_VolFisico_Desest_VarAnual",
-    # ENEC
-    "720332": "ENEC_ValorProd_Total",
+    # ── ENEC ─────────────────────────────────────────────────────────────────
+    "720332": "ENEC_ValorProd_ObraTotal",
     "720334": "ENEC_ValorProd_Edificacion",
     "720340": "ENEC_ValorProd_Transporte_Urb",
-    # EMEC
+    # ── EMEC ─────────────────────────────────────────────────────────────────
     "718504": "EMEC_Ingresos_ComercioMayor_43",
     "718506": "EMEC_Ingresos_ComercioMenor_46",
-    # IGAE
-    "737173": "IGAE_Secundario_IndiceVolFisico",
+    # ── IGAE ─────────────────────────────────────────────────────────────────
+    "737173": "IGAE_Secundario_Indice",
     "737149": "IGAE_Secundario_VarAnual",
-    # Balanza Comercial
+    # ── BALANZA COMERCIAL SIDERURGIA ──────────────────────────────────────────
     "133094": "BC_Siderurgia_Importaciones",
     "133031": "BC_Siderurgia_Exportaciones",
-    # INPP
+    # ── INPP ─────────────────────────────────────────────────────────────────
     "910503": "INPP_Manufactura_3133",
     "910502": "INPP_Construccion_23",
     "910501": "INPP_Energia_22",
     "910500": "INPP_Mineria_SinPetroleo",
     "910499": "INPP_Mineria_ConPetroleo",
     "910491": "INPP_SinPetroleo_ConServicios",
-    # INPC
-    "909294": "INPC_Energeticos",
-    "910396": "INPC_Total",
-    # IFB
-    "910398": "IFB_Total",
-    "910393": "IFB_Construccion",
-    "741034": "IFB_MaquinariaEquipo_Total",
-    "741030": "IFB_MaquinariaEquipo_Importado",
-    "741025": "IFB_MaquinariaEquipo_Nacional",
-    # EMOE / Confianza
-    "701407": "EMOE_ICE_Construccion",
-    "701401": "EMOE_ICE_Global",
-    "334497": "ICC_Original_Base2003",
+    # ── INPC ─────────────────────────────────────────────────────────────────
+    "910396": "INPC_Total_Mensual",
+    "909294": "INPC_Energeticos_NoSubyacente",
+    "910398": "INPC_Energeticos_Gobierno",
+    "910393": "INPC_Subyacente_Total",
+    # ── IFB ──────────────────────────────────────────────────────────────────
+    "741034": "IFB_Construccion",
+    "741030": "IFB_Maquinaria_Importada",
+    "741025": "IFB_Maquinaria_Nacional",
+    # ── CONFIANZA ─────────────────────────────────────────────────────────────
+    "701407": "ICE_Construccion",
+    "701401": "ICE_Global",
+    "334497": "ICC_Confianza_Consumidor",
 }
 
 # ── Etiquetas cortas legibles ────────────────────────────────────────────────
 INDICADORES_LABEL = {
-    "736414": "IMAI Construcción",
-    "736476": "IMAI Metálicas Básicas",
-    "736475": "IMAI Hierro y Acero",
-    "736481": "IMAI Prod. Metálicos",
-    "736491": "IMAI Maquinaria",
-    "736418": "IMAI Manufactura",
-    "736407": "IMAI Act. Industrial",
-    "736526": "IMAI Eq. Transporte",
-    "736594": "IMAI Construcción 2",
-    "736533": "IMAI Metálicas 2",
+    "736407": "IMAI Act. Industrial (idx)",
+    "736418": "IMAI Manufactura (idx)",
+    "736414": "IMAI Construcción (idx)",
+    "736475": "IMAI Met. Básicas 331 (idx)",
+    "736476": "IMAI Hierro y Acero 3311 (idx)",
+    "736481": "IMAI Prod. Metálicos 332 (idx)",
+    "736491": "IMAI Maquinaria 333 (idx)",
+    "736526": "IMAI Act. Industrial (var%)",
+    "736533": "IMAI Construcción (var%)",
+    "736594": "IMAI Met. Básicas 331 (var%)",
     "910468": "EMIM Vol. Físico (idx)",
     "910470": "EMIM Var. Anual (%)",
-    "720332": "ENEC Total",
+    "720332": "ENEC Obra Total",
     "720334": "ENEC Edificación",
     "720340": "ENEC Transporte Urb.",
     "718504": "EMEC Com. Mayoreo",
@@ -88,11 +88,11 @@ INDICADORES_LABEL = {
     "910500": "INPP Minería s/Pet.",
     "910499": "INPP Minería c/Pet.",
     "910491": "INPP s/Pet. c/Serv.",
-    "909294": "INPC Energéticos",
     "910396": "INPC Total",
-    "910398": "IFB Total",
-    "910393": "IFB Construcción",
-    "741034": "IFB Maq. Total",
+    "909294": "INPC Energéticos (NS)",
+    "910398": "INPC Energía Gobierno",
+    "910393": "INPC Subyacente",
+    "741034": "IFB Construcción",
     "741030": "IFB Maq. Importada",
     "741025": "IFB Maq. Nacional",
     "701407": "ICE Construcción",
@@ -104,8 +104,8 @@ INDICADORES_LABEL = {
 GRUPOS_INEGI = {
     "IMAI": {
         "label": "Actividad Industrial",
-        "desc": "Señal principal de los sectores que compran acero — Hierro & Acero (736475) es el indicador más directo para TYASA",
-        "claves": ["736414","736476","736475","736481","736491","736418","736407","736526","736594","736533"],
+        "desc": "Señal principal de los sectores que compran acero — Hierro & Acero (736476) y Met. Básicas 331 (736475) son los indicadores más directos para TYASA",
+        "claves": ["736407","736418","736414","736475","736476","736481","736491","736526","736533","736594"],
         "color": "#5B8DB8",
         "icon": "🏭",
     },
@@ -153,15 +153,15 @@ GRUPOS_INEGI = {
     },
     "INPC": {
         "label": "Precios Consumidor",
-        "desc": "Contexto macro — INPC alto implica que Banxico subirá tasas, encareciendo crédito y frenando inversión",
-        "claves": ["909294","910396"],
+        "desc": "Contexto macro — INPC Total, Subyacente, Energía NS y Gobierno; niveles altos implican tasas Banxico más altas, frenando crédito e inversión",
+        "claves": ["910396","909294","910398","910393"],
         "color": "#F48FB1",
         "icon": "🏪",
     },
     "IFB": {
         "label": "Inversión Fija Bruta",
-        "desc": "Predictor de demanda futura con 3-6 meses de anticipación — maquinaria importada señala capex industrial",
-        "claves": ["910398","910393","741034","741030","741025"],
+        "desc": "Predictor de demanda futura con 3-6 meses de anticipación — Maquinaria Importada (741030) señala capex industrial",
+        "claves": ["741034","741030","741025"],
         "color": "#7986CB",
         "icon": "🏦",
     },
