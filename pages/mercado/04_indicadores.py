@@ -469,10 +469,9 @@ def render():
             df_sorted["_ord"] = df_sorted["alerta"].map(_ORDER).fillna(3)
             df_sorted = df_sorted.sort_values("_ord")
 
-            st.markdown(
+            st.html(
                 f"<p style='color:#94A3B8;font-size:13px;margin:4px 0 12px;'>"
-                f"{len(df_sorted)} indicadores fuera de rango normal — ordenados por severidad.</p>",
-                unsafe_allow_html=True,
+                f"{len(df_sorted)} indicadores fuera de rango normal — ordenados por severidad.</p>"
             )
 
             clave_to_group = {}

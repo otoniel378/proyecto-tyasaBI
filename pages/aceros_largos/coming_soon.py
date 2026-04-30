@@ -10,7 +10,7 @@ if _root not in sys.path:
 import streamlit as st
 from config import COLORS
 
-st.markdown(
+st.html(
     f"""
     <div style='text-align:center;padding:60px 20px;'>
         <div style='font-size:4rem;margin-bottom:16px;'>📏</div>
@@ -30,6 +30,5 @@ st.markdown(
             font-weight:600;
         '>🔜 Proximo</div>
     </div>
-    """,
-    unsafe_allow_html=True,
+    """
 )

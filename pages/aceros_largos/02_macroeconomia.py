@@ -27,7 +27,7 @@ from aceros_largos.loaders import (
 
 def _tarjeta_indicador(titulo, valor_str, tendencia_str, situacion, impacto, accion, color, ayuda=""):
     """Tarjeta gerencial completa para un indicador."""
-    st.markdown(f"""
+    st.html(f"""
     <div style="
         border: 1px solid #e0e0e0;
         border-left: 6px solid {color};
@@ -59,7 +59,7 @@ def _tarjeta_indicador(titulo, valor_str, tendencia_str, situacion, impacto, acc
         </table>
         {f'<div style="font-size:11px; color:#aaa; margin-top:8px;">{ayuda}</div>' if ayuda else ''}
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def _prep_serie(info, periodo_meses):
@@ -420,7 +420,7 @@ if v_pib:
                 )
         elif v_pib:
             # Sin serie histórica filtrable: mostrar solo el KPI actual con contexto visual
-            st.markdown(f"""
+            st.html(f"""
             <div style="
                 background: {'#E8F5E9' if v_pib >= 0 else '#FFEBEE'};
                 border: 2px solid {'#2E7D32' if v_pib >= 0 else '#C62828'};
@@ -436,7 +436,7 @@ if v_pib:
                     {'📈 Economía creciendo' if v_pib >= 2 else '⚠️ Crecimiento débil' if v_pib >= 0 else '📉 Economía en contracción'}
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
             st.caption("Serie histórica no disponible o con formato no compatible para graficar.")
         else:
             st.info("Sin datos de PIB disponibles.")
@@ -577,7 +577,7 @@ st.subheader("🔮 Escenarios: ¿qué puede pasar en los próximos 3 meses?")
 col_a, col_b, col_c = st.columns(3)
 
 with col_a:
-    st.markdown("""
+    st.html("""
     <div style="background:#FFEBEE; border:1px solid #C62828; border-radius:8px; padding:14px;">
         <div style="font-size:15px; font-weight:700; color:#C62828; margin-bottom:8px;">🔴 Escenario Adverso</div>
         <ul style="margin:0; padding-left:18px; font-size:13px; color:#333;">
@@ -592,10 +592,10 @@ with col_a:
             Acción: posición defensiva, control de inventario, foco en clientes seguros
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 with col_b:
-    st.markdown("""
+    st.html("""
     <div style="background:#FFF3E0; border:1px solid #E65100; border-radius:8px; padding:14px;">
         <div style="font-size:15px; font-weight:700; color:#E65100; margin-bottom:8px;">🟡 Escenario Base</div>
         <ul style="margin:0; padding-left:18px; font-size:13px; color:#333;">
@@ -610,10 +610,10 @@ with col_b:
             Acción: mantener operación actual, optimizar mezcla de productos
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 with col_c:
-    st.markdown("""
+    st.html("""
     <div style="background:#E8F5E9; border:1px solid #2E7D32; border-radius:8px; padding:14px;">
         <div style="font-size:15px; font-weight:700; color:#2E7D32; margin-bottom:8px;">🟢 Escenario Positivo</div>
         <ul style="margin:0; padding-left:18px; font-size:13px; color:#333;">
@@ -628,7 +628,7 @@ with col_c:
             Acción: preparar disponibilidad, activar clientes dormidos, adelantar compras selectivas
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 st.divider()
 

@@ -225,9 +225,8 @@ for i, (seg_key, seg_info) in enumerate(sectoral_data.items()):
             value=val_str,
             delta=delta_str,
         )
-        st.markdown(
-            f"<div style='text-align:center; font-size:26px; margin-top:-8px;'>{emoji}</div>",
-            unsafe_allow_html=True
+        st.html(
+            f"<div style='text-align:center; font-size:26px; margin-top:-8px;'>{emoji}</div>"
         )
         desc = SECTOR_DESCRIPTIONS.get(seg_key, {})
         st.caption(desc.get("relevancia", ""))
@@ -253,7 +252,7 @@ for seg_key, seg_info in sectoral_data.items():
         col_info, col_graf = st.columns([1, 2])
 
         with col_info:
-            st.markdown(f"""
+            st.html(f"""
             <div style="
                 border-left: 5px solid {color};
                 padding: 12px 14px;
@@ -268,7 +267,7 @@ for seg_key, seg_info in sectoral_data.items():
                 <p style="font-weight:700; color:#1B3A5C;"><strong>▶ Acción sugerida:</strong><br>{acc}</p>
                 <p style="color:#777; font-size:11px; margin-top:8px;">{desc.get("lee_mas", "")}</p>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
             if t < -3:
                 st.warning(f"Tendencia empeorando: {t:+.1f} pp este mes.")
@@ -353,23 +352,23 @@ if nombres:
     col_b, col_p = st.columns(2)
     with col_b:
         c_m, _ = _color_semaforo(mejor[1])
-        st.markdown(f"""
+        st.html(f"""
         <div style="background:#E8F5E9; border:1px solid #2E7D32; border-radius:8px; padding:12px;">
             <strong>🟢 Mejor señal: {mejor[0]}</strong><br>
             <span style="font-size:22px; color:#2E7D32;">{mejor[1]:+.1f}%</span><br>
             <span style="font-size:12px; color:#555;">Priorizar atención en este subsector si quieres capturar volumen.</span>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
     with col_p:
         c_p, _ = _color_semaforo(peor[1])
-        st.markdown(f"""
+        st.html(f"""
         <div style="background:#FFEBEE; border:1px solid #C62828; border-radius:8px; padding:12px;">
             <strong>🔴 Señal más débil: {peor[0]}</strong><br>
             <span style="font-size:22px; color:#C62828;">{peor[1]:+.1f}%</span><br>
             <span style="font-size:12px; color:#555;">Clientes de este subsector están bajo mayor presión. Revisar cartera.</span>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
 st.divider()
 
@@ -422,7 +421,7 @@ with col_proj:
             "empeorando" if t_total < -1 else
             "estable"
         )
-        st.markdown(f"""
+        st.html(f"""
         <div style="background:{bg}; border:1px solid {border}; border-left:5px solid {border}; border-radius:8px; padding:16px;">
             <div style="font-size:18px; font-weight:800; color:#1B3A5C; margin-bottom:8px;">{vision}</div>
             <p style="margin:0 0 8px 0; font-size:14px;"><strong>{resumen}</strong></p>
@@ -432,7 +431,7 @@ with col_proj:
                 Impacto esperado: {impacto}
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
         st.caption("No se muestra predicción numérica porque no hay modelo estadístico validado; se muestra una lectura ejecutiva de corto plazo con datos reales.")
     else:
         st.info("Sin datos suficientes para generar visión de corto plazo.")
@@ -441,7 +440,7 @@ with col_rec:
     st.markdown("**Recomendación estratégica**")
     if v_total is not None:
         if v_total < -10:
-            st.markdown("""
+            st.html("""
             <div style="background:#FFEBEE; border:1px solid #C62828; border-radius:8px; padding:14px;">
                 🔴 <strong>Estrategia Defensiva</strong>
                 <ul style="margin:8px 0 0 0; padding-left:18px; font-size:13px;">
@@ -451,9 +450,9 @@ with col_rec:
                     <li>Revisar límites de crédito con clientes constructoras</li>
                 </ul>
             </div>
-            """, unsafe_allow_html=True)
+            """)
         elif v_total < -3:
-            st.markdown("""
+            st.html("""
             <div style="background:#FFF3E0; border:1px solid #E65100; border-radius:8px; padding:14px;">
                 🟡 <strong>Estrategia Conservadora</strong>
                 <ul style="margin:8px 0 0 0; padding-left:18px; font-size:13px;">
@@ -463,9 +462,9 @@ with col_rec:
                     <li>Preparar propuestas para cuando la tasa baje</li>
                 </ul>
             </div>
-            """, unsafe_allow_html=True)
+            """)
         else:
-            st.markdown("""
+            st.html("""
             <div style="background:#E8F5E9; border:1px solid #2E7D32; border-radius:8px; padding:14px;">
                 🟢 <strong>Estrategia de Crecimiento</strong>
                 <ul style="margin:8px 0 0 0; padding-left:18px; font-size:13px;">
@@ -475,7 +474,7 @@ with col_rec:
                     <li>Coordinar compras/producción para no quedar corto</li>
                 </ul>
             </div>
-            """, unsafe_allow_html=True)
+            """)
     else:
         st.info("Sin datos para generar recomendación.")
 

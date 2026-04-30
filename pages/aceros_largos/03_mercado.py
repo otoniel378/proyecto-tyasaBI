@@ -31,8 +31,8 @@ with col1:
     trend_color = "#C62828" if usd_mxn["trend_type"] == "up" else "#2E7D32"  # Up = malo para importaciones
     trend_icon = "📈" if usd_mxn["trend_type"] == "up" else "📉"
     
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, rgba(27, 58, 92, 0.1) 0%, rgba(75, 123, 167, 0.05) 100%); 
+    st.html(f"""
+    <div style="background: linear-gradient(135deg, rgba(27, 58, 92, 0.1) 0%, rgba(75, 123, 167, 0.05) 100%);
                 border: 1px solid rgba(75, 123, 167, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
@@ -44,7 +44,7 @@ with col1:
             <div style="font-size: 32px; opacity: 0.3;">💱</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 with col2:
     # CHATARRA
@@ -52,8 +52,8 @@ with col2:
     trend_color = "#2E7D32" if scrap["trend_type"] == "down" else "#C62828"  # Down = bueno para costos
     trend_icon = "📉" if scrap["trend_type"] == "down" else "📈"
     
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, rgba(27, 58, 92, 0.1) 0%, rgba(75, 123, 167, 0.05) 100%); 
+    st.html(f"""
+    <div style="background: linear-gradient(135deg, rgba(27, 58, 92, 0.1) 0%, rgba(75, 123, 167, 0.05) 100%);
                 border: 1px solid rgba(75, 123, 167, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
@@ -65,7 +65,7 @@ with col2:
             <div style="font-size: 32px; opacity: 0.3;">🔩</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 # ---------------------------------------------------------------------------
 # GRÁFICOS DE TENDENCIAS
@@ -160,17 +160,17 @@ for item in impact_data:
     with cols[1]:
         color = {"Muy Positivo": "#2E7D32", "Positivo": "#66BB6A", "Neutro": "#757575", 
                 "Negativo": "#EF5350", "Muy Negativo": "#C62828"}.get(item["Costos"], "#757575")
-        st.markdown(f'<span style="color: {color}; font-weight: bold;">{item["Costos"]}</span>', unsafe_allow_html=True)
+        st.html(f'<span style="color: {color}; font-weight: bold;">{item["Costos"]}</span>')
     
     with cols[2]:
         color = {"Muy Positivo": "#2E7D32", "Positivo": "#66BB6A", "Neutro": "#757575", 
                 "Negativo": "#EF5350", "Muy Negativo": "#C62828"}.get(item["Ventas"], "#757575")
-        st.markdown(f'<span style="color: {color}; font-weight: bold;">{item["Ventas"]}</span>', unsafe_allow_html=True)
+        st.html(f'<span style="color: {color}; font-weight: bold;">{item["Ventas"]}</span>')
     
     with cols[3]:
         color = {"Muy Positivo": "#2E7D32", "Positivo": "#66BB6A", "Neutro": "#757575", 
                 "Negativo": "#EF5350", "Muy Negativo": "#C62828"}.get(item["Margen"], "#757575")
-        st.markdown(f'<span style="color: {color}; font-weight: bold;">{item["Margen"]}</span>', unsafe_allow_html=True)
+        st.html(f'<span style="color: {color}; font-weight: bold;">{item["Margen"]}</span>')
     
     with cols[4]:
         st.write(item["Comentario"])
@@ -200,10 +200,9 @@ new_margin = base_margin + margin_impact
 impact_color = "#2E7D32" if margin_impact > 0 else "#C62828"
 impact_icon = "📈" if margin_impact > 0 else "📉"
 
-st.markdown(f"""
-### 📊 Resultado de Sensibilidad
-
-<div style="background: linear-gradient(135deg, rgba(27, 58, 92, 0.1) 0%, rgba(75, 123, 167, 0.05) 100%); 
+st.markdown("### 📊 Resultado de Sensibilidad")
+st.html(f"""
+<div style="background: linear-gradient(135deg, rgba(27, 58, 92, 0.1) 0%, rgba(75, 123, 167, 0.05) 100%);
             border: 1px solid rgba(75, 123, 167, 0.2); border-radius: 12px; padding: 20px; text-align: center;">
     <div style="font-size: 14px; color: #666; margin-bottom: 10px;">Margen Operativo Proyectado</div>
     <div style="font-size: 36px; font-weight: bold; color: #1B3A5C;">{new_margin:.1f}%</div>
@@ -211,7 +210,7 @@ st.markdown(f"""
         {impact_icon} {margin_impact:+.1f}pp vs base ({base_margin}%)
     </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 # ---------------------------------------------------------------------------
 # FOOTER
@@ -220,20 +219,20 @@ st.divider()
 
 col1, col2 = st.columns([1, 1])
 with col1:
-    st.markdown(f"""
+    st.html("""
     <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="display: inline-flex; width: 8px; height: 8px; background-color: #4A7BA7; 
-                     border-radius: 50%; animation: pulse 2s infinite;"></span>
-        <span style="font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; 
-                     letter-spacing: 1px;">Mercados en Tiempo Real · Bloomberg & Platts</span>
+        <span style="display: inline-flex; width: 8px; height: 8px; background-color: #4A7BA7;
+                     border-radius: 50%;"></span>
+        <span style="font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase;
+                     letter-spacing: 1px;">Mercados en Tiempo Real · Bloomberg &amp; Platts</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 with col2:
     sources = " · ".join(get_data_sources())
-    st.markdown(f"""
+    st.html(f"""
     <div style="text-align: right; font-size: 10px; color: #999;">
         Última actualización: {get_last_update()}<br>
         {sources}
     </div>
-    """, unsafe_allow_html=True)
+    """)

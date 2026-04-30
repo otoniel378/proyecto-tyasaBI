@@ -31,7 +31,7 @@ except ImportError as e:
 # ---------------------------------------------------------------------------
 
 def _bloque_comercio(titulo, valor_str, situacion, impacto, escenario, accion, color):
-    st.markdown(f"""
+    st.html(f"""
     <div style="
         border-left: 5px solid {color};
         background: #fafafa;
@@ -60,7 +60,7 @@ def _bloque_comercio(titulo, valor_str, situacion, impacto, escenario, accion, c
             </tr>
         </table>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 # ---------------------------------------------------------------------------
@@ -293,7 +293,7 @@ if not top_countries.empty:
                 ops        = row.get("operaciones", 0)
                 c_bar      = "#C62828" if pct > umbral_concentracion else "#E65100" if pct > 20 else "#555"
 
-                st.markdown(f"""
+                st.html(f"""
                 <div style="padding:8px 10px; border-radius:6px; background:#f5f5f5; margin-bottom:6px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong style="color:#1B3A5C;">{pais}</strong>
@@ -304,7 +304,7 @@ if not top_countries.empty:
                         <div style="width:{min(pct,100):.0f}%; background:{c_bar}; height:6px; border-radius:4px;"></div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
             # Alerta de concentración
             if not top_imp.empty:
@@ -328,7 +328,7 @@ if not top_countries.empty:
                 pct   = row["volumen_total_ton"] / total_exp_paises * 100 if total_exp_paises else 0
                 ops   = row.get("operaciones", 0)
 
-                st.markdown(f"""
+                st.html(f"""
                 <div style="padding:8px 10px; border-radius:6px; background:#f0f7f0; margin-bottom:6px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong style="color:#1B3A5C;">{pais}</strong>
@@ -339,7 +339,7 @@ if not top_countries.empty:
                         <div style="width:{min(pct,100):.0f}%; background:#2E7D32; height:6px; border-radius:4px;"></div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
         else:
             st.info("Sin datos de destinos de exportación.")
 
@@ -453,7 +453,7 @@ if not alertas:
     })
 
 for a in alertas:
-    st.markdown(f"""
+    st.html(f"""
     <div style="
         background:{a['bg']};
         border:1px solid {a['border']};
@@ -468,7 +468,7 @@ for a in alertas:
         <p style="margin:0 0 6px 0; font-size:13px; color:#333;">{a['mensaje']}</p>
         <p style="margin:0; font-size:13px; font-weight:600; color:#1B3A5C;">▶ {a['accion']}</p>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 st.divider()
 

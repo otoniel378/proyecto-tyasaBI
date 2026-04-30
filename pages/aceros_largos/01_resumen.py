@@ -46,7 +46,7 @@ def _semaforo(valor, umbrales_mal, umbrales_ok, inverso=False):
 
 def _bloque_gerencial(titulo, situacion, impacto, escenario, accion, color):
     """Render de un bloque de inteligencia gerencial."""
-    st.markdown(f"""
+    st.html(f"""
     <div style="
         border-left: 5px solid {color};
         background: linear-gradient(to right, #f8f9fa, #ffffff);
@@ -74,7 +74,7 @@ def _bloque_gerencial(titulo, situacion, impacto, escenario, accion, color):
             </tr>
         </table>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +147,7 @@ with c1:
     delta_str = f"{t_construccion:+.1f} pp" if t_construccion else None
     st.metric("🏗️ Construcción", val_str, delta_str,
               help="Variación anual de la actividad constructora. Principal driver de demanda de varilla y alambrón.")
-    st.markdown(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>", unsafe_allow_html=True)
+    st.html(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>")
 
 with c2:
     col_sem, emoji = _semaforo(v_inflacion, 6, 4, inverso=True)
@@ -155,14 +155,14 @@ with c2:
     delta_str = f"{t_inflacion:+.2f} pp" if t_inflacion else None
     st.metric("📊 Inflación", val_str, delta_str, delta_color="inverse",
               help="INPC general. Sube inflación → suben costos de producción y logística.")
-    st.markdown(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>", unsafe_allow_html=True)
+    st.html(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>")
 
 with c3:
     col_sem, emoji = _semaforo(v_pib, 0, 2)
     val_str = f"{v_pib:.1f}% YoY" if v_pib else "N/D"
     st.metric("🏛️ PIB", val_str,
               help="Crecimiento económico general. Economía sana → mayor inversión en infraestructura y vivienda.")
-    st.markdown(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>", unsafe_allow_html=True)
+    st.html(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>")
 
 with c4:
     bal_k = balanza / 1000 if balanza else 0
@@ -173,7 +173,7 @@ with c4:
     st.metric("⚖️ Balanza Acero Largos", val_str, estado,
               delta_color="inverse" if balanza < 0 else "normal",
               help="Exportaciones minus importaciones de aceros largos. Déficit = más acero importado presionando precios locales.")
-    st.markdown(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>", unsafe_allow_html=True)
+    st.html(f"<div style='color:{col_sem}; font-size:22px; text-align:center'>{emoji}</div>")
 
 st.divider()
 
@@ -321,7 +321,7 @@ if señales_activas:
         border = "#2E7D32"
         recomendacion_global = "Asegurar disponibilidad. Activar propuestas comerciales. Preparar capacidad para el repunte."
 
-    st.markdown(f"""
+    st.html(f"""
     <div style="
         background: {bg};
         border: 2px solid {border};
@@ -335,7 +335,7 @@ if señales_activas:
             ▶ {recomendacion_global}
         </p>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 st.divider()
 
@@ -432,11 +432,11 @@ if not acciones:
 
 for prioridad, texto in acciones:
     color_fila = "#FFEBEE" if "Alta" in prioridad else "#FFF3E0" if "Media" in prioridad else "#E8F5E9" if "Oportunidad" in prioridad else "#E3F2FD"
-    st.markdown(f"""
+    st.html(f"""
     <div style="background:{color_fila}; padding:12px 16px; border-radius:6px; margin-bottom:8px;">
         <strong>{prioridad}:</strong> {texto}
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 st.divider()
 st.caption(f"Datos: INEGI · MOCAMX · BigQuery TYASA · Actualizado: {get_last_update() if DATOS_REALES else 'N/D'}")
