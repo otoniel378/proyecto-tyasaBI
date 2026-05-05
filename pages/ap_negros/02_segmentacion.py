@@ -183,3 +183,165 @@ if not df_cp.empty and "PRODUCTO_LIMPIO" in df_cp.columns:
         title=dict(font=dict(size=14, color=COLORS["primary"]), x=0),
     )
     st.plotly_chart(fig_stack, use_container_width=True)
+
+# ---------------------------------------------------------------------------
+# B1 — CLIENTES EN RIESGO
+# ---------------------------------------------------------------------------
+st.divider()
+seccion_titulo("⚠️ Clientes en Riesgo", "Detección automática de señales de alerta por cliente")
+
+_ER  = "#DC2626"; _WA = "#D97706"; _OK = "#16A34A"
+_T1  = "#0F172A"; _T2 = "#64748B"; _T3 = "#94A3B8"
+
+from datetime import date as _date
+_hoy = pd.Timestamp.today()
+
+tab_fuga, tab_enfr, tab_mix = st.tabs(["🔴 En Fuga (>60d)", "🟠 Enfriándose (vol -30%)", "🔀 Cambiando Mix"])
+
+# ── En Fuga ──────────────────────────────────────────────────────────────────
+with tab_fuga:
+    fuga_rows = []
+    dc = load_gold_demanda_cliente()
+    if not dc.empty and "ULTIMA_COMPRA" in dc.columns:
+        dc = dc.copy()
+        dc["ULTIMA_COMPRA"] = pd.to_datetime(dc["ULTIMA_COMPRA"], errors="coerce")
+        dc["dias"] = (_hoy - dc["ULTIMA_COMPRA"]).dt.days
+        en_fuga = dc[dc["dias"] > 60].sort_values("PESO_TON", ascending=False)
+        for _, row in en_fuga.iterrows():
+            dias   = int(row["dias"])
+            sev    = "🔴" if dias > 120 else "🟠"
+            nivel  = "Crítico (>120d)" if dias > 120 else "En seguimiento (61-120d)"
+            fuga_rows.append({
+                "Cliente":       row.get("CLIENTE", "?"),
+                "Días sin comprar": dias,
+                "Vol. histórico (ton)": row.get("PESO_TON", 0),
+                "Severidad":     nivel,
+                "Emoji":         sev,
+            })
+
+    if not fuga_rows:
+        st.success("✅ Todos los clientes compraron en los últimos 60 días.")
+    else:
+        df_fuga = pd.DataFrame(fuga_rows)
+        n_crit = sum(1 for r in fuga_rows if r["Días sin comprar"] > 120)
+        st.html(f"""<div style="display:flex;gap:10px;margin-bottom:10px;">
+          <span style="display:inline-block;padding:3px 10px;border-radius:20px;
+               background:#FEE2E2;color:#991B1B;font-size:10.5px;font-weight:700;">
+            🔴 {n_crit} crítico(s)
+          </span>
+          <span style="display:inline-block;padding:3px 10px;border-radius:20px;
+               background:#FEF3C7;color:#92400E;font-size:10.5px;font-weight:700;">
+            🟠 {len(fuga_rows) - n_crit} en seguimiento
+          </span>
+        </div>""")
+        for r in fuga_rows[:15]:
+            col_bord = _ER if r["Días sin comprar"] > 120 else _WA
+            st.html(f"""<div style="background:#fff;border-radius:10px;padding:10px 14px;
+                 border-left:4px solid {col_bord};border:1px solid #E2E8F0;
+                 margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:{_T1};">
+                  {r['Emoji']} {r['Cliente']}
+                </div>
+                <div style="font-size:11px;color:{_T2};margin-top:2px;">
+                  {r['Severidad']} — Vol. histórico: {r['Vol. histórico (ton)']:,.1f} ton
+                </div>
+              </div>
+              <div style="font-size:22px;font-weight:800;color:{col_bord};text-align:right;">
+                {r['Días sin comprar']}d
+                <div style="font-size:9px;font-weight:400;color:{_T3};">sin comprar</div>
+              </div>
+            </div>""")
+
+# ── Enfriándose ───────────────────────────────────────────────────────────────
+with tab_enfr:
+    enfr_rows = []
+    if not df_vl_all.empty and "FECHAEMB" in df_vl_all.columns and "CLIENTE" in df_vl_all.columns:
+        vl = df_vl_all.copy()
+        vl["FECHAEMB"] = pd.to_datetime(vl["FECHAEMB"], errors="coerce")
+        vl = vl.dropna(subset=["FECHAEMB"])
+        # Periodos: últimos 3 meses vs 3 meses anteriores
+        corte1 = _hoy - pd.DateOffset(months=3)
+        corte2 = _hoy - pd.DateOffset(months=6)
+        reciente  = vl[vl["FECHAEMB"] >= corte1].groupby("CLIENTE")["PESO_TON"].sum()
+        anterior  = vl[(vl["FECHAEMB"] >= corte2) & (vl["FECHAEMB"] < corte1)].groupby("CLIENTE")["PESO_TON"].sum()
+        merged_e  = pd.DataFrame({"reciente": reciente, "anterior": anterior}).dropna()
+        merged_e["cambio"] = (merged_e["reciente"] - merged_e["anterior"]) / merged_e["anterior"].replace(0, float("nan")) * 100
+        frios = merged_e[merged_e["cambio"] <= -30].sort_values("cambio")
+        for cli, row in frios.iterrows():
+            pct = row["cambio"]
+            vol_ant = row["anterior"]
+            vol_rec = row["reciente"]
+            col_bord = _ER if pct <= -50 else _WA
+            dot = "🔴" if pct <= -50 else "🟠"
+            enfr_rows.append((cli, pct, vol_ant, vol_rec, col_bord, dot))
+
+    if not enfr_rows:
+        st.success("✅ Sin clientes con caída >30% en los últimos 3 meses.")
+    else:
+        st.caption(f"{len(enfr_rows)} cliente(s) con volumen ≥ 30% abajo respecto a los 3 meses previos.")
+        for cli, pct, vol_ant, vol_rec, col_bord, dot in enfr_rows[:15]:
+            st.html(f"""<div style="background:#fff;border-radius:10px;padding:10px 14px;
+                 border-left:4px solid {col_bord};border:1px solid #E2E8F0;
+                 margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:{_T1};">{dot} {cli}</div>
+                <div style="font-size:11px;color:{_T2};margin-top:2px;">
+                  Ant. 3m: {vol_ant:,.1f} ton → Rec. 3m: {vol_rec:,.1f} ton
+                </div>
+              </div>
+              <div style="font-size:22px;font-weight:800;color:{col_bord};text-align:right;">
+                {pct:+.0f}%
+                <div style="font-size:9px;font-weight:400;color:{_T3};">variación volumen</div>
+              </div>
+            </div>""")
+
+# ── Cambiando Mix ─────────────────────────────────────────────────────────────
+with tab_mix:
+    mix_rows = []
+    if not df_vl_all.empty and "FECHAEMB" in df_vl_all.columns \
+            and "CLIENTE" in df_vl_all.columns and "PRODUCTO_LIMPIO" in df_vl_all.columns:
+        vl2 = df_vl_all.copy()
+        vl2["FECHAEMB"] = pd.to_datetime(vl2["FECHAEMB"], errors="coerce")
+        vl2 = vl2.dropna(subset=["FECHAEMB"])
+        anio_act_m = _hoy.year
+        act_m  = vl2[vl2["FECHAEMB"].dt.year == anio_act_m]
+        prev_m = vl2[vl2["FECHAEMB"].dt.year == anio_act_m - 1]
+
+        def _top_prod(df_sub):
+            if df_sub.empty:
+                return pd.Series(dtype=str)
+            return df_sub.groupby(["CLIENTE", "PRODUCTO_LIMPIO"])["PESO_TON"].sum() \
+                         .reset_index().sort_values("PESO_TON", ascending=False) \
+                         .drop_duplicates("CLIENTE").set_index("CLIENTE")["PRODUCTO_LIMPIO"]
+
+        top_act  = _top_prod(act_m)
+        top_prev = _top_prod(prev_m)
+        comunes  = top_act.index.intersection(top_prev.index)
+        cambiaron = comunes[top_act[comunes] != top_prev[comunes]]
+
+        for cli in cambiaron[:20]:
+            mix_rows.append({
+                "Cliente":       cli,
+                "Producto anterior": top_prev[cli],
+                "Producto actual":   top_act[cli],
+            })
+
+    if not mix_rows:
+        st.success("✅ Sin cambios significativos en el producto principal de los clientes.")
+    else:
+        st.caption(f"{len(mix_rows)} cliente(s) cambiaron su producto #1 vs año anterior.")
+        for r in mix_rows:
+            st.html(f"""<div style="background:#fff;border-radius:10px;padding:10px 14px;
+                 border-left:4px solid #8B5CF6;border:1px solid #E2E8F0;margin-bottom:5px;">
+              <div style="font-size:12.5px;font-weight:700;color:{_T1};margin-bottom:4px;">
+                🔀 {r['Cliente']}
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+                <span style="background:#F1F5F9;padding:3px 8px;border-radius:6px;
+                     color:{_T2};">{r['Producto anterior']}</span>
+                <span style="color:#8B5CF6;font-weight:700;">→</span>
+                <span style="background:#F0FDF4;padding:3px 8px;border-radius:6px;
+                     color:#166534;">{r['Producto actual']}</span>
+              </div>
+            </div>""")

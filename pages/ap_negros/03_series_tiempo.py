@@ -20,6 +20,14 @@ from aceros_planos.negros.loaders import (
     load_serie_mensual_proceso,
     load_serie_mensual_cliente,
 )
+
+# Quiebres de mercado — carga silenciosa para C2 (event overlay)
+_df_quiebres = pd.DataFrame()
+try:
+    from aceros_planos.negros.loaders_contexto import load_quiebres_relevantes_planos
+    _df_quiebres = load_quiebres_relevantes_planos()
+except Exception:
+    pass
 from aceros_planos.negros.analytics.series_tiempo import (
     preparar_serie_mensual,
     calcular_variacion_mensual,
@@ -85,8 +93,66 @@ if not serie_var.empty:
         {"label": "Maximo",           "value": round(serie_var["PESO_TON"].max(), 1),  "suffix": " ton", "icon": "📈"},
         {"label": "Minimo",           "value": round(serie_var["PESO_TON"].min(), 1),  "suffix": " ton", "icon": "📉"},
     ])
-    fig_serie = linea_temporal(serie_var, x="PERIODO", y="PESO_TON",
-                                titulo="Demanda mensual total", show_area=True)
+
+    # C1 — Vista toggle + C2 — overlay de quiebres
+    c_vis, c_ovr = st.columns([3, 1])
+    with c_vis:
+        vista_st = st.radio("Vista:", ["Absoluta", "YoY %", "Índice base=100"],
+                            horizontal=True, key="st_vista_serie", label_visibility="collapsed")
+    with c_ovr:
+        overlay_q = st.checkbox("Mostrar quiebres de mercado", value=True, key="st_overlay_q") \
+                    if not _df_quiebres.empty else False
+
+    sv = serie_var.copy()
+    sv["PERIODO"] = pd.to_datetime(sv["PERIODO"], errors="coerce")
+    sv = sv.sort_values("PERIODO")
+
+    if vista_st == "Absoluta":
+        fig_serie = linea_temporal(sv, x="PERIODO", y="PESO_TON",
+                                   titulo="Demanda mensual total", show_area=True)
+    elif vista_st == "YoY %":
+        sv2 = sv.set_index("PERIODO")
+        sv2["YoY"] = sv2["PESO_TON"].pct_change(12) * 100
+        sv2 = sv2.dropna(subset=["YoY"]).reset_index()
+        if sv2.empty:
+            st.info("Insuficientes datos para YoY (mínimo 13 meses).")
+            sv2 = sv.copy()
+            sv2["YoY"] = 0.0
+        colors_b = [COLORS["success"] if v >= 0 else COLORS["danger"] for v in sv2.get("YoY", [])]
+        fig_serie = go.Figure(go.Bar(
+            x=sv2.get("PERIODO", pd.Series()), y=sv2.get("YoY", pd.Series()),
+            marker_color=colors_b, name="YoY %",
+            hovertemplate="%{x|%b %Y}<br>YoY: %{y:.1f}%<extra></extra>",
+        ))
+        fig_serie.add_hline(y=0, line_dash="dot", line_color=COLORS["neutral"], line_width=1)
+        fig_serie.update_layout(
+            paper_bgcolor=COLORS["surface"], plot_bgcolor=COLORS["background"],
+            font=dict(family="Inter, Arial, sans-serif", color=COLORS["text"]),
+            margin=dict(l=40, r=20, t=30, b=40), showlegend=False, height=320,
+            xaxis=dict(showgrid=False), yaxis=dict(title="YoY (%)", gridcolor="#E5E7EB"),
+        )
+    else:  # Índice base=100
+        base = float(sv["PESO_TON"].iloc[0]) if not sv.empty and float(sv["PESO_TON"].iloc[0]) != 0 else 1
+        sv["Indice"] = sv["PESO_TON"] / base * 100
+        fig_serie = linea_temporal(sv, x="PERIODO", y="Indice",
+                                   titulo="Índice base=100 (primer mes del período)", show_area=False)
+        fig_serie.add_hline(y=100, line_dash="dot", line_color=COLORS["neutral"], line_width=1)
+
+    # C2 — Añadir líneas verticales de quiebres activos
+    if overlay_q and not _df_quiebres.empty and "fecha_inicio" in _df_quiebres.columns:
+        q_dates = pd.to_datetime(_df_quiebres["fecha_inicio"], errors="coerce").dropna().unique()
+        for qd in q_dates[:5]:
+            var_q = ""
+            row_q = _df_quiebres[pd.to_datetime(_df_quiebres["fecha_inicio"], errors="coerce") == qd]
+            if not row_q.empty and "variable" in row_q.columns:
+                var_q = row_q.iloc[0]["variable"]
+            fig_serie.add_vline(
+                x=qd, line_dash="dash", line_color="#F59E0B", line_width=1.5,
+                annotation_text=var_q[:15], annotation_position="top right",
+                annotation_font_size=9, annotation_font_color="#92400E",
+            )
+
+    fig_serie.update_layout(height=320)
     st.plotly_chart(fig_serie, use_container_width=True)
 else:
     st.warning("Sin datos para el periodo seleccionado.")
@@ -110,6 +176,53 @@ if not serie_var.empty and "VAR_MOM_PCT" in serie_var.columns:
         showlegend=False, height=280,
     )
     st.plotly_chart(fig_var, use_container_width=True)
+
+# ── C3 — Índice Estacional ───────────────────────────────────────────────────
+st.divider()
+seccion_titulo("Índice Estacional por Mes", "Cuánto vende cada mes respecto al promedio anual (base=100)")
+
+if not serie_var.empty and "PESO_TON" in serie_var.columns:
+    _sv_est = serie_var.copy()
+    _sv_est["PERIODO"] = pd.to_datetime(_sv_est["PERIODO"], errors="coerce")
+    _sv_est = _sv_est.dropna(subset=["PERIODO"])
+    if "ANIO" not in _sv_est.columns:
+        _sv_est["ANIO"] = _sv_est["PERIODO"].dt.year
+    if "MES" not in _sv_est.columns:
+        _sv_est["MES"] = _sv_est["PERIODO"].dt.month
+
+    avg_anual = _sv_est.groupby("ANIO")["PESO_TON"].mean()
+    _sv_est["avg_anio"] = _sv_est["ANIO"].map(avg_anual)
+    _sv_est["idx_est"]  = _sv_est["PESO_TON"] / _sv_est["avg_anio"].replace(0, float("nan")) * 100
+    idx_mes = _sv_est.groupby("MES")["idx_est"].mean().reset_index()
+    idx_mes.columns = ["MES", "Índice"]
+
+    MESES_LABEL = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    idx_mes["Mes_lbl"] = idx_mes["MES"].apply(lambda m: MESES_LABEL[int(m)] if 1 <= int(m) <= 12 else str(m))
+    idx_mes["Color"] = idx_mes["Índice"].apply(
+        lambda v: COLORS["success"] if v >= 105 else (COLORS["danger"] if v <= 95 else COLORS["neutral"])
+    )
+
+    fig_est = go.Figure(go.Bar(
+        x=idx_mes["Mes_lbl"], y=idx_mes["Índice"],
+        marker_color=idx_mes["Color"].tolist(),
+        text=idx_mes["Índice"].apply(lambda v: f"{v:.0f}"),
+        textposition="outside", textfont=dict(size=9),
+        hovertemplate="%{x}<br>Índice: %{y:.1f}<extra></extra>",
+    ))
+    fig_est.add_hline(y=100, line_dash="dot", line_color="#64748B", line_width=1.5,
+                      annotation_text="Promedio=100", annotation_font_size=9)
+    fig_est.update_layout(
+        paper_bgcolor=COLORS["surface"], plot_bgcolor=COLORS["background"],
+        font=dict(family="Inter, Arial, sans-serif", color=COLORS["text"], size=11),
+        margin=dict(l=40, r=20, t=30, b=30), showlegend=False, height=270,
+        xaxis=dict(showgrid=False), yaxis=dict(title="Índice (100 = promedio)", gridcolor="#E5E7EB"),
+    )
+    st.plotly_chart(fig_est, use_container_width=True)
+    _idx_max = idx_mes.loc[idx_mes["Índice"].idxmax(), "Mes_lbl"]
+    _idx_min = idx_mes.loc[idx_mes["Índice"].idxmin(), "Mes_lbl"]
+    st.caption(f"Mes más alto: **{_idx_max}** · Mes más bajo: **{_idx_min}** · "
+               f"Estacionalidad calculada sobre {_sv_est['ANIO'].nunique()} años de datos.")
 
 def _filtrar_anios(df, col="PERIODO"):
     if df.empty or col not in df.columns:

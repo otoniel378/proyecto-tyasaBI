@@ -11,6 +11,7 @@ if _root not in sys.path:
 
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from config import APP_NAME, COLORS
 
 from aceros_planos.negros.loaders import (
@@ -41,6 +42,21 @@ with st.spinner("Cargando datos..."):
     df_mensual  = load_gold_demanda_mensual_total()
 
 df_mensual_f = aplicar_filtro_fechas(df_mensual, fecha_inicio, fecha_fin, col="PERIODO")
+
+# Contexto externo — carga silenciosa para A1 (gauge) y A3 (mini-panel)
+_ctx_ok  = False
+_df_vars = pd.DataFrame()
+_df_ine  = pd.DataFrame()
+try:
+    from aceros_planos.negros.loaders_contexto import (
+        load_vars_mercado_planos,
+        load_alertas_inegi_planos,
+    )
+    _df_vars = load_vars_mercado_planos(dias=90)
+    _df_ine  = load_alertas_inegi_planos()
+    _ctx_ok  = True
+except Exception:
+    pass
 
 # ---------------------------------------------------------------------------
 # Encabezado
@@ -78,6 +94,105 @@ with col1:
 with col2:
     st.metric("Top producto", kpis_data.top_producto or "—")
 
+# ---------------------------------------------------------------------------
+# A1 + A3 — Gauge ICC + Mini-panel contexto externo
+# ---------------------------------------------------------------------------
+if _ctx_ok:
+    from aceros_planos.negros.analytics.contexto_mercado import calcular_indice_condicion_comercial
+    icc = calcular_indice_condicion_comercial(_df_vars, _df_ine)
+
+    _OK = "#16A34A"; _WA = "#D97706"; _ER = "#DC2626"; _T2 = "#64748B"; _T3 = "#94A3B8"
+
+    col_g, col_m = st.columns([1, 3])
+
+    with col_g:
+        fig_g = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=icc["indice"],
+            number={"font": {"size": 28, "color": icc["color"]}, "suffix": "/10"},
+            title={"text": f"<b>ICC: {icc['nivel']}</b>",
+                   "font": {"size": 11, "color": icc["color"]}},
+            gauge={
+                "axis": {"range": [0, 10], "tickfont": {"size": 9}},
+                "bar":  {"color": icc["color"], "thickness": 0.25},
+                "bgcolor": "white", "borderwidth": 0,
+                "steps": [
+                    {"range": [0,   4],  "color": "#FEE2E2"},
+                    {"range": [4,   6.5],"color": "#FEF3C7"},
+                    {"range": [6.5, 10], "color": "#DCFCE7"},
+                ],
+            },
+        ))
+        fig_g.update_layout(
+            height=180, margin=dict(t=24, b=0, l=10, r=10),
+            paper_bgcolor="white",
+            font=dict(family="Segoe UI, sans-serif"),
+        )
+        st.plotly_chart(fig_g, use_container_width=True, config={"displayModeBar": False})
+
+    with col_m:
+        # A3 — 4 mini-cards de contexto externo
+        def _last_mkt(nombre):
+            if _df_vars.empty or "nombre" not in _df_vars.columns:
+                return None, 0.0
+            sub = _df_vars[_df_vars["nombre"] == nombre].sort_values("fecha")
+            vals = pd.to_numeric(sub["valor"], errors="coerce").dropna()
+            if vals.empty:
+                return None, 0.0
+            v  = float(vals.iloc[-1])
+            d7 = (v - float(vals.iloc[-8])) / abs(float(vals.iloc[-8])) * 100 \
+                 if len(vals) >= 8 and float(vals.iloc[-8]) != 0 else 0.0
+            return v, d7
+
+        def _last_inegi(clave):
+            if _df_ine.empty or "Clave" not in _df_ine.columns:
+                return None, "Normal"
+            row = _df_ine[_df_ine["Clave"] == clave]
+            if row.empty:
+                return None, "Normal"
+            return row.iloc[0].get("ult_valor"), str(row.iloc[0].get("alerta", "Normal"))
+
+        _COL_A = {"Normal": _OK, "Moderado": _WA, "Alto": _WA, "Critico": _ER}
+
+        cards_info = [
+            ("ETF Acero Global", *_last_mkt("ETF_Acero_Global"), "mkt", ".2f"),
+            ("USD / MXN",        *_last_mkt("USD_MXN"),           "mkt", ".4f"),
+            ("IMAI Manufactura", *_last_inegi("736418"),           "ine", ""),
+            ("IGAE Sec. Var%",   *_last_inegi("737149"),           "ine", ""),
+        ]
+
+        mc_cols = st.columns(4)
+        for i, info in enumerate(cards_info):
+            lbl, val, extra, src, fmt = info
+            with mc_cols[i]:
+                if val is None:
+                    st.html(f"""<div style="background:#F8FAFC;border-radius:10px;
+                         padding:10px 12px;border:1px solid #E2E8F0;text-align:center;">
+                      <div style="font-size:9.5px;font-weight:700;color:{_T3};
+                           text-transform:uppercase;margin-bottom:4px;">{lbl}</div>
+                      <div style="font-size:16px;font-weight:800;color:{_T3};">N/D</div>
+                    </div>""")
+                    continue
+                if src == "mkt":
+                    d7    = extra
+                    col_d = _OK if d7 >= 0 else _ER
+                    icon  = "▲" if d7 >= 0 else "▼"
+                    val_s = f"{float(val):{fmt}}"
+                    sub_s = f'<span style="color:{col_d};font-size:10px;">{icon} {abs(d7):.1f}% 7d</span>'
+                else:
+                    alerta = extra
+                    col_d  = _COL_A.get(alerta, _T3)
+                    val_s  = f"{float(val):.1f}"
+                    sub_s  = f'<span style="color:{col_d};font-size:10px;">{alerta}</span>'
+
+                st.html(f"""<div style="background:#F8FAFC;border-radius:10px;
+                     padding:10px 12px;border:1px solid #E2E8F0;border-left:3px solid {col_d};">
+                  <div style="font-size:9.5px;font-weight:700;color:{_T3};
+                       text-transform:uppercase;margin-bottom:3px;">{lbl}</div>
+                  <div style="font-size:17px;font-weight:800;color:#0F172A;">{val_s}</div>
+                  {sub_s}
+                </div>""")
+
 st.divider()
 
 # ---------------------------------------------------------------------------
@@ -93,9 +208,52 @@ with col_trend:
         st.warning("Sin datos para el periodo seleccionado.")
     else:
         serie = preparar_serie_mensual(df_mensual_f)
-        fig_linea = linea_temporal(serie, x="PERIODO", y="PESO_TON", titulo="Toneladas mensuales", show_area=True)
-        fig_linea.update_layout(height=290)
-        st.plotly_chart(fig_linea, use_container_width=True)
+
+        # A2 — toggle Absoluta / YoY % / Índice
+        vista = st.radio("Vista:", ["Absoluta", "YoY %", "Índice base=100"],
+                         horizontal=True, key="re_vista_trend", label_visibility="collapsed")
+
+        if vista == "Absoluta":
+            fig_linea = linea_temporal(serie, x="PERIODO", y="PESO_TON",
+                                       titulo="Toneladas mensuales", show_area=True)
+            fig_linea.update_layout(height=260)
+            st.plotly_chart(fig_linea, use_container_width=True)
+
+        elif vista == "YoY %":
+            s = serie.copy()
+            s["PERIODO"] = pd.to_datetime(s["PERIODO"], errors="coerce")
+            s = s.sort_values("PERIODO").set_index("PERIODO")
+            s["YoY"] = s["PESO_TON"].pct_change(12) * 100
+            s = s.dropna(subset=["YoY"]).reset_index()
+            if s.empty:
+                st.info("Insuficientes datos para calcular YoY (mínimo 13 meses).")
+            else:
+                colors_bar = [("#16A34A" if v >= 0 else "#DC2626") for v in s["YoY"]]
+                fig_yoy = go.Figure(go.Bar(
+                    x=s["PERIODO"], y=s["YoY"],
+                    marker_color=colors_bar, name="Var. YoY %",
+                ))
+                fig_yoy.update_layout(
+                    height=260, margin=dict(t=10, b=10, l=10, r=10),
+                    yaxis_title="Variación YoY (%)", paper_bgcolor="white",
+                    plot_bgcolor="#F8FAFC", font=dict(family="Segoe UI, sans-serif", size=11),
+                    xaxis=dict(showgrid=False), yaxis=dict(gridcolor="#EEF2FF"),
+                )
+                fig_yoy.add_hline(y=0, line_dash="dot", line_color="#94A3B8", line_width=1)
+                st.plotly_chart(fig_yoy, use_container_width=True,
+                                config={"displayModeBar": False})
+
+        else:  # Índice base=100
+            s = serie.copy()
+            s["PERIODO"] = pd.to_datetime(s["PERIODO"], errors="coerce")
+            s = s.sort_values("PERIODO")
+            base = float(s["PESO_TON"].iloc[0]) if not s.empty and float(s["PESO_TON"].iloc[0]) != 0 else 1
+            s["Indice"] = s["PESO_TON"] / base * 100
+            fig_idx = linea_temporal(s, x="PERIODO", y="Indice",
+                                     titulo="Índice (primer mes = 100)", show_area=False)
+            fig_idx.update_layout(height=260)
+            fig_idx.add_hline(y=100, line_dash="dot", line_color="#94A3B8", line_width=1)
+            st.plotly_chart(fig_idx, use_container_width=True)
 
 with col_part:
     if not df_part.empty:

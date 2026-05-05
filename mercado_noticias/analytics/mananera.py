@@ -2,16 +2,18 @@
 mananera.py — Analiza la conferencia mañanera presidencial para impacto siderúrgico.
 
 Flujo:
-  1. Busca en YouTube el video de la conferencia del día (yt-dlp) — en vivo o grabado
-  2. Obtiene la transcripción automática en español (youtube-transcript-api)
-  3. Filtra y analiza con Gemini: solo información relevante para acero
-  4. Caché por fecha en cache/mananera/ (máx 3 días, limpieza automática)
+  1. Busca en YouTube múltiples candidatos (yt-dlp) — en vivo o grabado
+  2. Obtiene la transcripción con 3 métodos: youtube-transcript-api → yt-dlp list() → yt-dlp subtítulos directos
+  3. Prueba cada candidato hasta obtener transcripción válida
+  4. Filtra y analiza con Gemini: solo información relevante para acero
+  5. Caché por fecha en cache/mananera/ (máx 3 días, limpieza automática)
 """
 from __future__ import annotations
 
 import json
 import re
 import datetime
+import urllib.request
 from pathlib import Path
 
 # ── Rutas ─────────────────────────────────────────────────────────────────────
@@ -154,21 +156,23 @@ def _cache_save(fecha: str, data: dict) -> None:
 
 # ── YouTube helpers ───────────────────────────────────────────────────────────
 
-def _find_video_id(fecha: str) -> tuple[str | None, str, bool]:
+def _find_video_candidates(fecha: str) -> tuple[list[dict], str]:
     """
     Busca la mañanera de `fecha` en YouTube con múltiples estrategias.
-    Retorna (video_id, error_msg, is_live).
-    Prioridades:
-      1. Canal oficial + duración >= 45 min
-      2. Canal oficial en vivo (live)
-      3. Cualquier video >= 45 min
-      4. Cualquier live que coincida con la búsqueda
-      5. Primer resultado
+    Retorna (lista_de_candidatos, error_msg).
+    Cada candidato: {"id": str, "is_live": bool, "duration": float, "priority": int}
+
+    Prioridades (menor = mejor):
+      1. Canal oficial + duración >= 45 min  → priority 1
+      2. Canal oficial en vivo (live)         → priority 2
+      3. Cualquier video >= 45 min            → priority 3
+      4. Cualquier live                       → priority 4
+      5. Primer resultado                     → priority 5
     """
     try:
         import yt_dlp  # type: ignore
     except ImportError:
-        return None, "yt-dlp no instalado — ejecuta: pip install yt-dlp", False
+        return [], "yt-dlp no instalado — ejecuta: pip install yt-dlp"
 
     try:
         dt = datetime.date.fromisoformat(fecha)
@@ -176,13 +180,14 @@ def _find_video_id(fecha: str) -> tuple[str | None, str, bool]:
         dia = dt.day
         year = dt.year
     except Exception:
-        return None, f"Fecha inválida: {fecha}", False
+        return [], f"Fecha inválida: {fecha}"
 
     # Múltiples queries para aumentar probabilidad de encontrar el video
     queries = [
         f"conferencia mañanera Claudia Sheinbaum {dia} {mes} {year}",
         f"mañanera presidencial {dia} {mes} {year}",
         f"conferencia mañanera presidencia Mexico {fecha}",
+        f"mañanera {dia} de {mes} {year}",
     ]
 
     ydl_opts = {
@@ -191,6 +196,9 @@ def _find_video_id(fecha: str) -> tuple[str | None, str, bool]:
         "extract_flat": True,
         "skip_download": True,
     }
+
+    seen_ids: set[str] = set()
+    candidates: list[dict] = []
 
     for query in queries:
         try:
@@ -216,56 +224,115 @@ def _find_video_id(fecha: str) -> tuple[str | None, str, bool]:
                         e.get("live_status") in ("is_live", "is_upcoming")
                     )
 
-                # 1. Canal oficial + >= 45 min
                 for e in entries:
-                    if _is_official(e) and (e.get("duration") or 0) >= 2700:
-                        return e["id"], "", False
+                    vid = e["id"]
+                    if vid in seen_ids:
+                        continue
+                    seen_ids.add(vid)
 
-                # 2. Canal oficial en vivo
-                for e in entries:
-                    if _is_official(e) and _is_live(e):
-                        return e["id"], "", True
+                    is_official = _is_official(e)
+                    is_live = _is_live(e)
+                    duration = e.get("duration") or 0
 
-                # 3. Cualquier video >= 45 min
-                for e in entries:
-                    if (e.get("duration") or 0) >= 2700:
-                        return e["id"], "", False
+                    if is_official and duration >= 2700:
+                        priority = 1
+                    elif is_official and is_live:
+                        priority = 2
+                    elif duration >= 2700:
+                        priority = 3
+                    elif is_live:
+                        priority = 4
+                    else:
+                        priority = 5
 
-                # 4. Cualquier live
-                for e in entries:
-                    if _is_live(e):
-                        return e["id"], "", True
+                    candidates.append({
+                        "id": vid,
+                        "is_live": is_live,
+                        "duration": duration,
+                        "priority": priority,
+                    })
 
-                # 5. Primer resultado
-                return entries[0]["id"], "", False
-
-        except Exception as exc:
-            # Continúa con el siguiente query si falla
-            last_err = str(exc)[:120]
+        except Exception:
             continue
 
-    return None, f"No se encontró video de la mañanera para {fecha}.", False
+    # Ordenar por prioridad y deduplicar
+    candidates.sort(key=lambda c: (c["priority"], c["duration"] * -1))
+    return candidates, ""
+
+
+def _get_transcript_yt_dlp(video_id: str) -> str | None:
+    """Extrae subtítulos usando yt-dlp directamente (más resistente a bloqueos)."""
+    try:
+        import yt_dlp  # type: ignore
+    except ImportError:
+        return None
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "subtitleslangs": ["es", "es-MX", "es-419"],
+        "subtitlesformat": "json3",
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if not info:
+                return None
+
+            # Buscar subtítulos en español: manuales primero, luego automáticos
+            subtitles = info.get("subtitles") or {}
+            auto_subs = info.get("automatic_captions") or {}
+
+            for src in [subtitles, auto_subs]:
+                for lang_key in ["es-MX", "es-419", "es"]:
+                    if lang_key in src:
+                        for sub_entry in src[lang_key]:
+                            if sub_entry.get("ext") in ("json3", "json"):
+                                req = urllib.request.Request(
+                                    sub_entry["url"],
+                                    headers={"User-Agent": "Mozilla/5.0"}
+                                )
+                                with urllib.request.urlopen(req, timeout=15) as resp:
+                                    data = json.loads(resp.read().decode("utf-8"))
+                                parts = []
+                                for event in data.get("events", []):
+                                    segs = event.get("segs") or []
+                                    for seg in segs:
+                                        t = seg.get("utf8", "").strip()
+                                        if t:
+                                            parts.append(t)
+                                text = " ".join(parts)
+                                if len(text) > 100:
+                                    return text
+    except Exception:
+        pass
+
+    return None
 
 
 def _get_transcript(video_id: str) -> tuple[str | None, str]:
-    """Obtiene la transcripción en español (youtube-transcript-api v1.x)."""
+    """Obtiene la transcripción en español con múltiples métodos."""
+    # ── Método 1: youtube-transcript-api ──────────────────────────────────
     try:
         from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
-    except ImportError:
-        return None, "youtube-transcript-api no instalado — pip install youtube-transcript-api"
-
-    # Intento 1: fetch directo con idiomas preferidos
-    try:
         api = YouTubeTranscriptApi()
         fetched = api.fetch(video_id, languages=["es", "es-MX", "es-419", "es-ES", "es-US"])
         text = " ".join(s.text for s in fetched).strip()
         if text:
             return text, ""
+    except ImportError:
+        pass  # lib no instalada, intentar fallback
     except Exception:
-        pass
+        pass  # YouTube bloqueó la API, intentar fallback
 
-    # Intento 2: listar todas y tomar la primera en español
+    # ── Método 2: youtube-transcript-api vía list() ──────────────────────
     try:
+        from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
         api2 = YouTubeTranscriptApi()
         for t in api2.list(video_id):
             if t.language_code.startswith("es"):
@@ -273,9 +340,15 @@ def _get_transcript(video_id: str) -> tuple[str | None, str]:
                 text2 = " ".join(s.text for s in fetched2).strip()
                 if text2:
                     return text2, ""
-        return None, "El video no tiene transcripción en español disponible."
-    except Exception as e:
-        return None, f"Error al obtener transcripción: {str(e)[:160]}"
+    except Exception:
+        pass
+
+    # ── Método 3: yt-dlp subtítulos directos ─────────────────────────────
+    text3 = _get_transcript_yt_dlp(video_id)
+    if text3:
+        return text3, ""
+
+    return None, "El video no tiene transcripción ni subtítulos en español disponibles."
 
 
 # ── Gemini ────────────────────────────────────────────────────────────────────
@@ -335,9 +408,9 @@ def analizar_mananera(
             cached["_cached"] = True
             return cached
 
-    # Paso 1 — buscar video
-    video_id, err, is_live = _find_video_id(fecha)
-    if not video_id:
+    # Paso 1 — buscar videos candidatos
+    candidates, err = _find_video_candidates(fecha)
+    if not candidates:
         return {
             "tiene_contenido_relevante": False,
             "_error": err,
@@ -346,10 +419,21 @@ def analizar_mananera(
             "_is_live": False,
         }
 
-    # Paso 2 — transcripción
-    transcript, err = _get_transcript(video_id)
+    # Paso 2 — intentar transcripción en cada candidato hasta que funcione
+    transcript = None
+    video_id = None
+    is_live = False
+    tried = 0
+    for cand in candidates:
+        tried += 1
+        transcript, _ = _get_transcript(cand["id"])
+        if transcript:
+            video_id = cand["id"]
+            is_live = cand["is_live"]
+            break
+        # Si no funciona, seguir con el siguiente candidato
+
     if not transcript:
-        # Para live sin transcripción: mensaje específico
         if is_live:
             msg = (
                 "La conferencia está en vivo o acaba de terminar. "
@@ -358,14 +442,14 @@ def analizar_mananera(
                 "Intenta de nuevo en unos minutos."
             )
         else:
-            msg = err or "No se pudo obtener la transcripción del video."
+            msg = f"No se obtuvo transcripción de {tried} video(s) intentados."
         return {
             "tiene_contenido_relevante": False,
             "_error": msg,
             "_cached": False,
             "fecha": fecha,
-            "_video_id": video_id,
-            "_is_live": is_live,
+            "_video_id": candidates[0]["id"] if candidates else None,
+            "_is_live": False,
         }
 
     # Paso 3 — Gemini (truncar a 40 000 chars ≈ 1 h de discurso)

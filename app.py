@@ -251,12 +251,14 @@ PAGINAS = {
     "bienvenida": "pages.hub",
     
     # ACEROS PLANOS - Negros
-    ("aceros_planos", "negros", "apn_resumen"): "pages.ap_negros.01_resumen",
-    ("aceros_planos", "negros", "apn_seg"): "pages.ap_negros.02_segmentacion",
-    ("aceros_planos", "negros", "apn_series"): "pages.ap_negros.03_series_tiempo",
+    ("aceros_planos", "negros", "apn_alertas"):  "pages.ap_negros.00_alertas",
+    ("aceros_planos", "negros", "apn_resumen"):  "pages.ap_negros.01_resumen",
+    ("aceros_planos", "negros", "apn_seg"):      "pages.ap_negros.02_segmentacion",
+    ("aceros_planos", "negros", "apn_series"):   "pages.ap_negros.03_series_tiempo",
     ("aceros_planos", "negros", "apn_forecast"): "pages.ap_negros.04_forecasting",
-    ("aceros_planos", "negros", "apn_mix"):   "pages.ap_negros.05_mix_productos",
-    ("aceros_planos", "negros", "apn_intel"): "pages.ap_negros.06_inteligencia_clientes",
+    ("aceros_planos", "negros", "apn_mix"):      "pages.ap_negros.05_mix_productos",
+    ("aceros_planos", "negros", "apn_intel"):    "pages.ap_negros.06_inteligencia_clientes",
+    ("aceros_planos", "negros", "apn_mercado"):  "pages.ap_negros.08_mercado_contexto",
     
     # ACEROS PLANOS - Galvanizados
     ("aceros_planos", "galvanizados", "coming"): "pages.ap_galvanizados.coming_soon",
@@ -346,12 +348,14 @@ elif seccion == "mercado":
 # ---------------------------------------------------------------------------
 if seccion == "aceros_planos" and subseccion == "negros":
     MODULOS_NEGROS = {
-        "apn_resumen": ("📊", "Resumen"),
-        "apn_seg":     ("👥", "Segmentación"),
-        "apn_series":  ("📈", "Series"),
-        "apn_forecast":("🔮", "Pronóstico"),
-        "apn_mix":     ("🎯", "Mix"),
-        "apn_intel":   ("🧠", "Intel. Clientes"),
+        "apn_alertas":  ("⚡", "Alertas"),
+        "apn_resumen":  ("📊", "Resumen"),
+        "apn_seg":      ("👥", "Segmentación"),
+        "apn_series":   ("📈", "Series"),
+        "apn_forecast": ("🔮", "Pronóstico"),
+        "apn_mix":      ("🎯", "Mix"),
+        "apn_intel":    ("🧠", "Intel."),
+        "apn_mercado":  ("🌐", "Mercado"),
     }
 
     st.markdown('<div id="module-tabs-marker" style="display:none"></div>', unsafe_allow_html=True)
